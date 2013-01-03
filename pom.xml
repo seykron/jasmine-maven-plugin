@@ -51,7 +51,7 @@
     </snapshotRepository>
     <site>
       <id>jasmine-plugin-release</id>
-      <url>${repositoryRoot}/site/${project.groupId}/katari/${project.version}</url>
+      <url>${repositoryRoot}/site/${project.groupId}/jasmine-maven-plugin/${project.version}</url>
     </site>
   </distributionManagement>
 
@@ -59,7 +59,7 @@
     <jasmine.version>1.0.2</jasmine.version>
     <powermock.version>1.4.6</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <repositoryRoot>scp://maven.55social.com/opt/55social/maven/katari</repositoryRoot>
+    <repositoryRoot>scp://maven.55social.com/opt/55social/maven/jasmine-maven-plugin</repositoryRoot>
   </properties>
 
   <dependencies>
