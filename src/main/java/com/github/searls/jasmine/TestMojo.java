@@ -77,6 +77,7 @@ public class TestMojo extends AbstractJasmineMojo {
    */
   private MavenProject project;
 
+  @Override
   public void run() throws Exception {
     if(!skipTests) {
       getLog().info("Executing Jasmine Specs");
@@ -101,7 +102,7 @@ public class TestMojo extends AbstractJasmineMojo {
     return runnerFile;
   }
 
-  private JasmineResult executeSpecs(File runnerFile) throws MalformedURLException {
+  private JasmineResult executeSpecs(final File runnerFile) throws MalformedURLException {
     WebDriver driver = createDriver();
     JasmineResult result = new SpecRunnerExecutor().execute(
       runnerFile.toURI().toURL(),
@@ -120,6 +121,7 @@ public class TestMojo extends AbstractJasmineMojo {
         klass = (Class<? extends WebDriver>) classLoader
             .loadClass(webDriverClassName);
         Constructor<? extends WebDriver> ctor = klass.getConstructor();
+        Thread.currentThread().setContextClassLoader(classLoader);
         return ctor.newInstance();
       } catch (Exception e) {
         throw new RuntimeException("Couldn't instantiate webDriverClassName", e);
@@ -134,13 +136,14 @@ public class TestMojo extends AbstractJasmineMojo {
       throw new RuntimeException(e);
     }
     HtmlUnitDriver driver = new HtmlUnitDriver(htmlUnitBrowserVersion) {
-      protected WebClient modifyWebClient(WebClient client) {
+      @Override
+      protected WebClient modifyWebClient(final WebClient client) {
         client.setAjaxController(new NicelyResynchronizingAjaxController());
 
         //Disables stuff like this "com.gargoylesoftware.htmlunit.IncorrectnessListenerImpl notify WARNING: Obsolete content type encountered: 'text/javascript'."
         if (!debug)
           client.setIncorrectnessListener(new IncorrectnessListener() {
-                public void notify(String arg0, Object arg1) {}
+                public void notify(final String arg0, final Object arg1) {}
         });
 
         return client;
@@ -151,13 +154,13 @@ public class TestMojo extends AbstractJasmineMojo {
   }
 
 
-  private void logResults(JasmineResult result) {
+  private void logResults(final JasmineResult result) {
     JasmineResultLogger resultLogger = new JasmineResultLogger();
     resultLogger.setLog(getLog());
     resultLogger.log(result);
   }
 
-  private void throwAnySpecFailures(JasmineResult result) throws MojoFailureException {
+  private void throwAnySpecFailures(final JasmineResult result) throws MojoFailureException {
     if(haltOnFailure && !result.didPass()) {
       throw new MojoFailureException("There were Jasmine spec failures.");
     }
