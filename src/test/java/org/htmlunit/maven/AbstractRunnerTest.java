@@ -1,0 +1,92 @@
+package org.htmlunit.maven;
+
+import static org.easymock.EasyMock.*;
+import static org.hamcrest.CoreMatchers.*;
+import static org.junit.Assert.assertThat;
+
+import java.util.Properties;
+
+import org.apache.commons.lang.StringUtils;
+import org.htmlunit.javascript.EventHandler;
+import org.htmlunit.javascript.EventTargetAdapter;
+import org.htmlunit.maven.AbstractRunner;
+import org.htmlunit.maven.RunnerContext;
+import org.htmlunit.protocol.classpath.Handler;
+import org.junit.Test;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.javascript.host.Window;
+
+/** Tests the {@link AbstractRunner} class.
+ */
+public class AbstractRunnerTest {
+
+  @Test
+  public void initialize() {
+    final RunnerContext context = createMock(RunnerContext.class);
+    AbstractRunner runner = new AbstractRunner() {
+      @Override
+      protected void configure(final RunnerContext theContext) {
+        assertThat(theContext, is(context));
+      }
+      @Override
+      protected void configureWebClient(final WebClient client) {
+        super.configureWebClient(client);
+        client.setThrowExceptionOnFailingStatusCode(true);
+      }
+      public void run() {
+      }
+    };
+    expect(context.getBrowserVersion()).andReturn(BrowserVersion.FIREFOX_3_6);
+
+    Properties clientProps = new Properties();
+    clientProps.put("homePage", "http://foo.bar");
+    expect(context.getWebClientConfiguration()).andReturn(clientProps);
+    replay(context);
+
+    assertThat(runner.getWebClient(), is(nullValue()));
+    assertThat(runner.getContext(), is(nullValue()));
+    assertThat(runner.getDriver(), is(nullValue()));
+
+    runner.initialize(context);
+    assertThat(runner.getWebClient().getHomePage(), is("http://foo.bar"));
+    assertThat(runner.getWebClient().isJavaScriptEnabled(), is(true));
+    assertThat(runner.getWebClient().isThrowExceptionOnFailingStatusCode(),
+        is(true));
+    assertThat(runner.getContext(), is(context));
+    assertThat(runner.getDriver(), is(notNullValue()));
+    // Checks url stream handler registration.
+    assertThat(System.getProperty("java.protocol.handler.pkgs"),
+        is(StringUtils.substringBeforeLast(Handler.class.getPackage().getName(),
+            ".")));
+    verify(context);
+  }
+
+  @SuppressWarnings("serial")
+  @Test
+  public void addEventListener() {
+    AbstractRunner runner = new AbstractRunner() {
+      @Override
+      protected void configure(final RunnerContext theContext) {
+      }
+      public void run() {
+        getDriver().get("classpath:org/htmlunit/maven/TestRunner.js");
+      }
+    };
+    runner.initialize(new RunnerContext());
+    runner.addEventListener(Event.TYPE_DOM_DOCUMENT_LOADED, new EventHandler() {
+      @Override
+      public void handle(final org.w3c.dom.events.Event event) {
+        assertThat(event.getCurrentTarget(), is(notNullValue()));
+
+        EventTargetAdapter target;
+        target = (EventTargetAdapter) event.getCurrentTarget();
+        assertThat(target.getOriginalTarget(), is(notNullValue()));
+        assertThat(target.getOriginalTarget(), instanceOf(Window.class));
+      }
+    }, false);
+    runner.run();
+  }
+}

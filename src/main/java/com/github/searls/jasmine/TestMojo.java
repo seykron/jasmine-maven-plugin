@@ -4,26 +4,17 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.Collections;
-import java.util.Set;
 
 import com.github.searls.jasmine.io.scripts.TargetDirScriptResolver;
 import com.github.searls.jasmine.runner.*;
 import org.apache.commons.io.FileUtils;
-import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
 import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.artifact.InvalidDependencyVersionException;
-import org.apache.maven.project.artifact.MavenMetadataSource;
+import org.htmlunit.maven.ClassLoaderBuilder;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
@@ -39,6 +30,7 @@ import com.github.searls.jasmine.model.JasmineResult;
  * @component
  * @goal test
  * @phase test
+ * @requiresDependencyResolution test
  */
 public class TestMojo extends AbstractJasmineMojo {
   /**
@@ -173,55 +165,13 @@ public class TestMojo extends AbstractJasmineMojo {
    * @return Returns the created {@link ClassLoader} containing all the
    *    project's dependencies.
    */
-  @SuppressWarnings("unchecked")
   private ClassLoader createDependenciesClassLoader() {
 
-    // Make Artifacts of all the dependencies.
-    Set<Artifact> dependencyArtifacts;
-
-    try {
-      dependencyArtifacts = MavenMetadataSource.createArtifacts(
-          artifactFactory, project.getDependencies(), null, null, null );
-    } catch (InvalidDependencyVersionException ex) {
-      throw new RuntimeException("Cannot resolve dependencies version.", ex);
-    }
-
-    // Resolves all dependencies transitively to obtain a comprehensive list
-    // of jars.
-    ArtifactResolutionResult result;
-
-    try {
-      result = artifactResolver.resolveTransitively(
-        dependencyArtifacts,
-        project.getArtifact(),
-        Collections.EMPTY_LIST,
-        localRepository,
-        metadataSource);
-    } catch (ArtifactResolutionException ex) {
-      throw new RuntimeException("Cannot resolve the artifact.", ex);
-    } catch (ArtifactNotFoundException ex) {
-      throw new RuntimeException("Artifact not found in the local"
-          + " repository.", ex);
-    }
-
-    // Retrieves the filesystem path of each dependency jar.
-    Set<Artifact> artifacts = result.getArtifacts();
-
-    URL[] urls = new URL[artifacts.size()];
-
-    int i = 0;
-
-    for (Artifact artifact : artifacts) {
-      try {
-        urls[i++] = artifact.getFile().toURI().toURL();
-      } catch (MalformedURLException ex) {
-        throw new RuntimeException("Cannot resolve the artifact path.", ex);
-      }
-    }
-
-    URLClassLoader newLoader = new URLClassLoader(urls,
-        Thread.currentThread().getContextClassLoader());
-
-    return newLoader;
+    ClassLoaderBuilder builder = new ClassLoaderBuilder(artifactResolver,
+        metadataSource, localRepository, project);
+    return builder.includeDependencies(true)
+      .includeTestDependencies(false)
+      .setParent(Thread.currentThread().getContextClassLoader())
+      .create();
   }
 }
