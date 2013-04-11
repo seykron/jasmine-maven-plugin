@@ -44,6 +44,7 @@ public class AbstractRunnerTest {
     Properties clientProps = new Properties();
     clientProps.put("homePage", "http://foo.bar");
     expect(context.getWebClientConfiguration()).andReturn(clientProps);
+    expect(context.getTimeout()).andReturn(60);
     replay(context);
 
     assertThat(runner.getWebClient(), is(nullValue()));
@@ -77,8 +78,7 @@ public class AbstractRunnerTest {
     };
     runner.initialize(new RunnerContext());
     runner.addEventListener(Event.TYPE_DOM_DOCUMENT_LOADED, new EventHandler() {
-      @Override
-      public void handle(final org.w3c.dom.events.Event event) {
+      public void handleEvent(final org.w3c.dom.events.Event event) {
         assertThat(event.getCurrentTarget(), is(notNullValue()));
 
         EventTargetAdapter target;

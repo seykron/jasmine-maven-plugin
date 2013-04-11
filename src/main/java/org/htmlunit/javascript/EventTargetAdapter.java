@@ -45,8 +45,7 @@ public class EventTargetAdapter extends ScriptableObject
       final EventListener handler, final boolean useCapture) {
 
     EventHandler handlerAdapter = new EventHandler() {
-      @Override
-      public void handle(final Event event) {
+      public void handleEvent(final Event event) {
         handler.handleEvent(event);
       }
     };

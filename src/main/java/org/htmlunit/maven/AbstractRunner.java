@@ -3,6 +3,7 @@ package org.htmlunit.maven;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 
@@ -43,6 +44,10 @@ public abstract class AbstractRunner implements WebDriverRunner {
   private List<EventDefinition> eventDefinitions =
       new ArrayList<EventDefinition>();
 
+  /** Object to wait for web driver processing; it's never null after
+   * initialize(). */
+  private WebClientWait wait;
+
   /** Configures the runner. It's invoked during the runner initialization.
    * @param context Context to configure the runner. Cannot be null.
    */
@@ -74,6 +79,13 @@ public abstract class AbstractRunner implements WebDriverRunner {
         return client;
       };
     };
+    int timeout = context.getTimeout();
+    wait = new WebClientWait(client);
+    wait.pollingEvery(1000, TimeUnit.MILLISECONDS);
+    if (timeout > -1) {
+      // -1 means INFINITE, no timeout.
+      wait.withTimeout(timeout, TimeUnit.SECONDS);
+    }
     configure(context);
   }
 
@@ -160,6 +172,12 @@ public abstract class AbstractRunner implements WebDriverRunner {
       public void webWindowClosed(final WebWindowEvent event) {
       }
     });
+  }
+
+  /** Waits until all windows, even those opened in JavaScript, are closed.
+   */
+  protected void waitCompletion() {
+    wait.start();
   }
 
   /** Creates a web connection that supports to load resources from the

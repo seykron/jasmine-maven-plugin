@@ -9,16 +9,11 @@ import java.util.List;
 import java.util.Properties;
 
 import org.codehaus.plexus.util.ReflectionUtils;
-import org.htmlunit.javascript.EventHandler;
-import org.htmlunit.javascript.EventTargetAdapter;
 import org.htmlunit.maven.RunnerContext;
 import org.htmlunit.maven.runner.JavaScriptTestRunner;
 import org.htmlunit.maven.runner.JavaScriptTestRunner.DefaultAttributes;
 import org.junit.Before;
 import org.junit.Test;
-
-import com.gargoylesoftware.htmlunit.javascript.host.Event;
-import com.gargoylesoftware.htmlunit.javascript.host.Window;
 
 /** Tests the {@link JavaScriptTestRunner} class.
  */
@@ -48,7 +43,7 @@ public class JavaScriptTestRunnerTest {
     runnerConfig.put(DefaultAttributes.TEST_SCRIPTS.getKey(),
         "classpath:org/htmlunit/maven/*Test.js");
     context.setRunnerConfiguration(runnerConfig);
-    context.setTimeout(600);
+    context.setTimeout(10);
     context.getWebClientConfiguration().setProperty("javaScriptEnabled",
         String.valueOf(true));
     runner = new JavaScriptTestRunner();
@@ -85,21 +80,11 @@ public class JavaScriptTestRunnerTest {
   }
 
   @Test
-  @SuppressWarnings("serial")
   public void run() {
     runner.initialize(context);
-    runner.addEventListener(Event.TYPE_DOM_DOCUMENT_LOADED, new EventHandler() {
-      @Override
-      public void handle(final org.w3c.dom.events.Event event) {
-        EventTargetAdapter target;
-        target = (EventTargetAdapter) event.getCurrentTarget();
-        Window window = (Window) target.getOriginalTarget();
-
-        String doc = window.getDocument().getDomNodeOrDie().asXml();
-        assertThat(doc.contains("OK"), is(true));
-      }
-    }, false);
     runner.run();
+    assertThat(runner.getDriver().findElementById("result").getText(),
+        is("OK"));
   }
 
   private Object getValue(final String property) {

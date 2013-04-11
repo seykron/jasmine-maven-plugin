@@ -17,7 +17,6 @@ import org.apache.commons.lang.Validate;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.ResourceUtils;
 import org.htmlunit.maven.RunnerContext;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 /** Runner to load JavaScript unit test environment into htmlunit.
  */
@@ -97,7 +96,7 @@ public class JavaScriptTestRunner extends AbstractRunner {
     try {
       FileUtils.writeStringToFile(testRunnerFile, template.toString());
       getDriver().get(testRunnerFile.toURI().toURL().toString());
-      new WebDriverWait(getDriver(), getContext().getTimeout(), 1000);
+      waitCompletion();
     } catch (IOException cause) {
       throw new RuntimeException("Cannot write test runner file.", cause);
     }

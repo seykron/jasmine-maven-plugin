@@ -1,6 +1,5 @@
 package org.htmlunit.javascript;
 
-import org.w3c.dom.events.Event;
 import org.w3c.dom.events.EventListener;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
@@ -18,17 +17,6 @@ public abstract class EventHandler extends ScriptableObject
    */
   private static final long serialVersionUID = 1L;
 
-  /** Handles the event.
-   * @param event Event triggered on the target object. It's never null.
-   */
-  public abstract void handle(final Event event);
-
-  /** {@inheritDoc}
-   */
-  public void handleEvent(final Event event) {
-    handle(event);
-  }
-
   /** Delegates the JavaScript function call to the internal callback.
    *
    * <p>{@inheritDoc}</p>
@@ -38,7 +26,7 @@ public abstract class EventHandler extends ScriptableObject
     if (args.length == 1
         && com.gargoylesoftware.htmlunit.javascript.host
           .Event.class.isInstance(args[0])) {
-      handle(new EventAdapter(
+      handleEvent(new EventAdapter(
           (com.gargoylesoftware.htmlunit.javascript.host.Event) args[0]));
     }
     return null;

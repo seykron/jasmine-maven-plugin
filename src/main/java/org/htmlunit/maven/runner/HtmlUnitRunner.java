@@ -7,7 +7,6 @@ import java.util.Properties;
 import org.apache.commons.lang.Validate;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.RunnerContext;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gargoylesoftware.htmlunit.WebClient;
 
@@ -47,7 +46,7 @@ public class HtmlUnitRunner extends AbstractRunner {
 
     for (String document : documents) {
       getDriver().get(document);
-      new WebDriverWait(getDriver(), getContext().getTimeout(), 1000);
     }
+    waitCompletion();
   }
 }

@@ -49,6 +49,10 @@ public class ClassPathScanner extends ResourceScanner {
     return new LinkedList<URL>(resources);
   }
 
+  /** Searches for expression matches in the specified JAR resource.
+   * @param url URL to the JAR resource. Cannot be null.
+   * @return Returns a list of matching resources. Never returns null.
+   */
   private List<URL> findMatches(final URL url) {
     JarFile jarFile;
     String rootEntryPath;
