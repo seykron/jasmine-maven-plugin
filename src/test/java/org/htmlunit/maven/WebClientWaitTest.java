@@ -16,10 +16,13 @@ import org.openqa.selenium.TimeoutException;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import com.gargoylesoftware.htmlunit.ScriptException;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.WebWindowEvent;
 import com.gargoylesoftware.htmlunit.WebWindowListener;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.JavaScriptErrorListener;
 
 /** Tests the {@link WebClientWait} class.
  */
@@ -28,10 +31,17 @@ import com.gargoylesoftware.htmlunit.WebWindowListener;
 public class WebClientWaitTest {
 
   private WebClient client;
+  private Capture<JavaScriptErrorListener> capturedErrorListener;
+  private Capture<WebWindowListener> capturedWebWindowListener;
 
   @Before
   public void setUp() {
     client = createMock(WebClient.class);
+    client.setThrowExceptionOnScriptError(false);
+    capturedErrorListener = new Capture<JavaScriptErrorListener>();
+    capturedWebWindowListener = new Capture<WebWindowListener>();
+    client.addWebWindowListener(capture(capturedWebWindowListener));
+    client.setJavaScriptErrorListener(capture(capturedErrorListener));
   }
 
   @Test
@@ -40,7 +50,6 @@ public class WebClientWaitTest {
     expect(window.getScriptObject()).andReturn(new Object());
     replay(window);
 
-    client.addWebWindowListener(isA(WebWindowListener.class));
     expect(client.getWebWindows()).andReturn(Arrays.asList(window));
     replay(client);
 
@@ -56,16 +65,13 @@ public class WebClientWaitTest {
     expect(window.getScriptObject()).andReturn(new Object());
     replay(window);
 
-    Capture<WebWindowListener> capturedListener;
-    capturedListener = new Capture<WebWindowListener>();
-    client.addWebWindowListener(capture(capturedListener));
     expect(client.getWebWindows()).andReturn(new ArrayList<WebWindow>());
     replay(client);
 
     WebClientWait wait = new WebClientWait(client);
     assertThat(wait.isDone(), is(true));
 
-    WebWindowListener listener = capturedListener.getValue();
+    WebWindowListener listener = capturedWebWindowListener.getValue();
 
     WebWindowEvent contentChangedEvent = createMock(WebWindowEvent.class);
     expect(contentChangedEvent.getWebWindow()).andReturn(window);
@@ -88,7 +94,6 @@ public class WebClientWaitTest {
     expect(window.getScriptObject()).andReturn(new Object());
     replay(window);
 
-    client.addWebWindowListener(isA(WebWindowListener.class));
     expect(client.getWebWindows()).andReturn(new ArrayList<WebWindow>());
     replay(client);
 
@@ -114,7 +119,6 @@ public class WebClientWaitTest {
     expect(window.getScriptObject()).andReturn(new Object());
     replay(window);
 
-    client.addWebWindowListener(isA(WebWindowListener.class));
     expect(client.getWebWindows()).andReturn(new ArrayList<WebWindow>());
     replay(client);
 
@@ -127,5 +131,51 @@ public class WebClientWaitTest {
     wait.pollingEvery(500, TimeUnit.MILLISECONDS)
       .withTimeout(1000, TimeUnit.MILLISECONDS);
     wait.start();
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void start_throwJavaScriptException() {
+    WebWindow window = createMock(WebWindow.class);
+    expect(window.getScriptObject()).andReturn(new Object());
+    replay(window);
+
+    expect(client.getWebWindows()).andReturn(new ArrayList<WebWindow>());
+    replay(client);
+
+    WebClientWait wait = new WebClientWait(client);
+    wait.setThrowJavaScriptException(true)
+      .pollingEvery(500, TimeUnit.MILLISECONDS)
+      .withTimeout(10000, TimeUnit.MILLISECONDS);
+
+    JavaScriptErrorListener listener = capturedErrorListener.getValue();
+    HtmlPage page = createMock(HtmlPage.class);
+    ScriptException ex;
+    ex = new ScriptException(page, new IllegalStateException("Test"));
+    listener.scriptException(page, ex);
+
+    wait.start();
+  }
+
+  @Test
+  public void start_quietJavaScriptException() {
+    WebWindow window = createMock(WebWindow.class);
+    expect(window.getScriptObject()).andReturn(new Object());
+    replay(window);
+
+    expect(client.getWebWindows()).andReturn(new ArrayList<WebWindow>());
+    replay(client);
+
+    WebClientWait wait = new WebClientWait(client);
+    wait.pollingEvery(500, TimeUnit.MILLISECONDS)
+      .withTimeout(10000, TimeUnit.MILLISECONDS);
+
+    JavaScriptErrorListener listener = capturedErrorListener.getValue();
+    HtmlPage page = createMock(HtmlPage.class);
+    ScriptException ex;
+    ex = new ScriptException(page, new IllegalStateException("Test"));
+    listener.scriptException(page, ex);
+
+    wait.start();
+    assertThat(wait.getException(), is((Exception) ex));
   }
 }

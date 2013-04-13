@@ -24,7 +24,7 @@ public class HandlerTest {
         Handler.class.getPackage().getName(), ".");
 
     System.setProperty("java.protocol.handler.pkgs", classPathHandler);
-    URL url = new URL("classpath:/org/htmlunit/maven/TestRunner.html");
+    URL url = new URL("classpath:/org/htmlunit/maven/DefaultTestRunner.html");
     InputStream input = url.openStream();
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     IOUtils.copy(input, output);

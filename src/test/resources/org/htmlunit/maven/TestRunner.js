@@ -9,7 +9,6 @@ TestRunner = {
     });
 
     setTimeout(function () {
-      document.getElementById("result").innerHTML = "OK";
       popup.close();
       window.close();
     }, 2000);

@@ -81,7 +81,8 @@ public abstract class AbstractRunner implements WebDriverRunner {
     };
     int timeout = context.getTimeout();
     wait = new WebClientWait(client);
-    wait.pollingEvery(1000, TimeUnit.MILLISECONDS);
+    wait.setThrowJavaScriptException(client.isThrowExceptionOnScriptError())
+      .pollingEvery(1000, TimeUnit.MILLISECONDS);
     if (timeout > -1) {
       // -1 means INFINITE, no timeout.
       wait.withTimeout(timeout, TimeUnit.SECONDS);

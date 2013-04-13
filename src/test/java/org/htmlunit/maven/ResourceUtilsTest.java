@@ -40,6 +40,6 @@ public class ResourceUtilsTest {
   @Test
   public void expand() {
     String expr = "classpath:/org/htmlunit/maven/*.js";
-    assertThat(ResourceUtils.expand(Arrays.asList(expr)).size(), is(4));
+    assertThat(ResourceUtils.expand(Arrays.asList(expr)).size(), is(6));
   }
 }

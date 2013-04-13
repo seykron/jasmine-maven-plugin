@@ -13,6 +13,7 @@ import java.util.Properties;
 import org.antlr.stringtemplate.StringTemplate;
 import org.antlr.stringtemplate.language.DefaultTemplateLexer;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.Validate;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.ResourceUtils;
@@ -27,7 +28,7 @@ public class JavaScriptTestRunner extends AbstractRunner {
       "classpath:/org/htmlunit/maven/DefaultTestRunner.html";
 
   /** Test runner file name. */
-  private static final String TEST_RUNNER_FILE = "TestRunner.html";
+  private static final String TEST_RUNNER_SUFFIX = "Runner.html";
 
   /** Path to the test runner template. */
   private String testRunnerTemplate = DEFAULT_TEMPLATE;
@@ -43,17 +44,15 @@ public class JavaScriptTestRunner extends AbstractRunner {
    * scripts; valid after initialize(). */
   private List<URL> sourceScripts = new ArrayList<URL>();
 
-  /** List of scripts containing test code; valid after initialize(). */
-  private List<URL> testScripts = new ArrayList<URL>();
+  /** Test files. Can be any resource identified as test by the current
+   * runner. It's never null after initialize().
+   */
+  private List<URL> testFiles = new ArrayList<URL>();
 
   /** Test runner and test cases output directory; it's never null
    * after initialize();
    */
   private File outputDirectory;
-
-  /** Test runner output file; it's never null after initialize();
-   */
-  private File testRunnerFile;
 
   /** {@inheritDoc}
    */
@@ -77,29 +76,66 @@ public class JavaScriptTestRunner extends AbstractRunner {
       sourceScripts = expand((String) runnerConfig
           .get(DefaultAttributes.SOURCE_SCRIPTS.getKey()));
     }
-    if (DefaultAttributes.TEST_SCRIPTS.in(runnerConfig)) {
-      testScripts = expand((String) runnerConfig
-          .get(DefaultAttributes.TEST_SCRIPTS.getKey()));
+    if (DefaultAttributes.TEST_FILES.in(runnerConfig)) {
+      testFiles = expand((String) runnerConfig
+          .get(DefaultAttributes.TEST_FILES.getKey()));
     }
     Validate.isTrue(DefaultAttributes.OUTPUT_DIR.in(runnerConfig),
         "Output directory must be specified.");
     outputDirectory = new File((String) runnerConfig
         .get(DefaultAttributes.OUTPUT_DIR.getKey()));
-    testRunnerFile = new File(outputDirectory, TEST_RUNNER_FILE);
   }
 
   /** {@inheritDoc}
    */
   public void run() {
-    StringTemplate template = createTestRunnerTemplate();
-    doPrepare(template);
     try {
-      FileUtils.writeStringToFile(testRunnerFile, template.toString());
-      getDriver().get(testRunnerFile.toURI().toURL().toString());
-      waitCompletion();
+      for (URL testFile : testFiles) {
+        // Generates a new template and prepares the environment.
+        StringTemplate template = createTestRunnerTemplate();
+        doPrepare(template);
+
+        // Loads test file into template.
+        loadTest(template, testFile);
+
+        // Generates the runner file for this test file.
+        File runnerFile = createTestRunnerFile(testFile);
+        FileUtils.writeStringToFile(runnerFile, template.toString());
+
+        // Executes the test and waits for completion.
+        getDriver().get(runnerFile.toURI().toURL().toString());
+        waitCompletion();
+      }
     } catch (IOException cause) {
       throw new RuntimeException("Cannot write test runner file.", cause);
     }
+  }
+
+  /** Creates the local test runner file for the specified test. By
+   * default, the test runner file will be the test file name plus
+   * a constant suffix.
+   *
+   * @param testFile Test script to create runner file for. Cannot be null.
+   * @return A valid file. Never returns null.
+   */
+  protected File createTestRunnerFile(final URL testFile) {
+    String baseName = FilenameUtils.getBaseName(testFile.getFile());
+
+    return new File(outputDirectory, baseName + TEST_RUNNER_SUFFIX);
+  }
+
+  /** Loads test file into test runner template. By default, it expands
+   * the test file pattern and puts &gt;script&lt; tags for expanded files.
+   *
+   * Can be overridden to change the test load strategy.
+   *
+   * @param runnerTemplate Current runner template. Cannot be null.
+   * @param test Test to load. Cannot be null.
+   */
+  protected void loadTest(final StringTemplate runnerTemplate,
+      final URL test) {
+    runnerTemplate.setAttribute(DefaultAttributes.TEST_FILES.getKey(),
+        generateScriptTags(Arrays.asList(test)));
   }
 
   /** Can be overridden in order to prepare the runner template before writing
@@ -117,8 +153,6 @@ public class JavaScriptTestRunner extends AbstractRunner {
         generateScriptTags(bootstrapScripts));
     testRunner.setAttribute(DefaultAttributes.SOURCE_SCRIPTS.getKey(),
         generateScriptTags(sourceScripts));
-    testRunner.setAttribute(DefaultAttributes.TEST_SCRIPTS.getKey(),
-        generateScriptTags(testScripts));
   }
 
   /** Expands the specified resource matching expression into real
@@ -181,9 +215,10 @@ public class JavaScriptTestRunner extends AbstractRunner {
      */
     SOURCE_SCRIPTS("sourceScripts"),
 
-    /** Test scripts. They must register tests.
+    /** Test files. Can be any resource identified as test by the current
+     * runner. Cannot be null.
      */
-    TEST_SCRIPTS("testScripts");
+    TEST_FILES("testFiles");
 
     /** Attribute configuration key. */
     private String key;
