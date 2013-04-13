@@ -12,6 +12,7 @@ import java.util.Properties;
 
 import org.antlr.stringtemplate.StringTemplate;
 import org.antlr.stringtemplate.language.DefaultTemplateLexer;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.Validate;
@@ -104,11 +105,26 @@ public class JavaScriptTestRunner extends AbstractRunner {
 
         // Executes the test and waits for completion.
         getDriver().get(runnerFile.toURI().toURL().toString());
+
         waitCompletion();
+
+        // Notifies test finish.
+        testFinished(testFile);
+
+        // WebDriver doesn't switch automatically.
+        String windowHandle = (String) CollectionUtils
+            .get(getDriver().getWindowHandles(), 0);
+        getDriver().switchTo().window(windowHandle);
       }
     } catch (IOException cause) {
       throw new RuntimeException("Cannot write test runner file.", cause);
     }
+  }
+
+  /** Invoked when a single test finished.
+   * @param test Test that finished. It's never null.
+   */
+  protected void testFinished(final URL test) {
   }
 
   /** Creates the local test runner file for the specified test. By
@@ -125,7 +141,7 @@ public class JavaScriptTestRunner extends AbstractRunner {
   }
 
   /** Loads test file into test runner template. By default, it expands
-   * the test file pattern and puts &gt;script&lt; tags for expanded files.
+   * the test file pattern and puts &lt;script&gt; tags for expanded files.
    *
    * Can be overridden to change the test load strategy.
    *
@@ -147,8 +163,10 @@ public class JavaScriptTestRunner extends AbstractRunner {
    * @param testRunner Template already loaded. Cannot be null.
    */
   protected void doPrepare(final StringTemplate testRunner) {
-    testRunner.setAttribute(DefaultAttributes.TEST_RUNNER_SCRIPT.getKey(),
-        generateScriptTags(Arrays.asList(testRunnerScript)));
+    if (testRunnerScript != null) {
+      testRunner.setAttribute(DefaultAttributes.TEST_RUNNER_SCRIPT.getKey(),
+          generateScriptTags(Arrays.asList(testRunnerScript)));
+    }
     testRunner.setAttribute(DefaultAttributes.BOOTSTRAP_SCRIPTS.getKey(),
         generateScriptTags(bootstrapScripts));
     testRunner.setAttribute(DefaultAttributes.SOURCE_SCRIPTS.getKey(),
