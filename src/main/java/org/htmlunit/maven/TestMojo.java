@@ -10,7 +10,7 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
-import org.htmlunit.maven.runner.HtmlUnitRunner;
+import org.htmlunit.maven.runner.JavaScriptTestRunner;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -160,7 +160,7 @@ public class TestMojo extends AbstractMojo {
       }
     }
 
-    return new HtmlUnitRunner();
+    return new JavaScriptTestRunner();
   }
 
   /** Creates a {@link ClassLoader} which contains all the project's
