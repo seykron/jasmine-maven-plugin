@@ -1,7 +1,7 @@
 BarWidget = function (container) {
   return {
     render: function () {
-      container.innerHTML = "BAR";
+      container.innerHTML = PROP_BAR;
     }
   };
 };

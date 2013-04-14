@@ -15,26 +15,22 @@ import org.htmlunit.protocol.classpath.Handler;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 
 /** Tests the {@link AbstractRunner} class.
+ * TODO (matias.mirabelli): test connection and web window listeners.
  */
 public class AbstractRunnerTest {
 
   @Test
-  public void initialize() {
+  public void configuration() {
     final RunnerContext context = createMock(RunnerContext.class);
     AbstractRunner runner = new AbstractRunner() {
       @Override
       protected void configure(final RunnerContext theContext) {
         assertThat(theContext, is(context));
-      }
-      @Override
-      protected void configureWebClient(final WebClient client) {
-        super.configureWebClient(client);
-        client.setThrowExceptionOnFailingStatusCode(true);
       }
       public void run() {
       }
@@ -54,8 +50,8 @@ public class AbstractRunnerTest {
     runner.initialize(context);
     assertThat(runner.getWebClient().getHomePage(), is("http://foo.bar"));
     assertThat(runner.getWebClient().isJavaScriptEnabled(), is(true));
-    assertThat(runner.getWebClient().isThrowExceptionOnFailingStatusCode(),
-        is(true));
+    assertThat(runner.getWebClient().getAjaxController(),
+        instanceOf(NicelyResynchronizingAjaxController.class));
     assertThat(runner.getContext(), is(context));
     assertThat(runner.getDriver(), is(notNullValue()));
     // Checks url stream handler registration.

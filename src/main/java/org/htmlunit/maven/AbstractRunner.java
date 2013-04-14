@@ -3,9 +3,11 @@ package org.htmlunit.maven;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
@@ -80,8 +82,9 @@ public abstract class AbstractRunner implements WebDriverRunner {
       };
     };
     int timeout = context.getTimeout();
+    boolean throwException = client.isThrowExceptionOnScriptError();
     wait = new WebClientWait(client);
-    wait.setThrowJavaScriptException(client.isThrowExceptionOnScriptError())
+    wait.setThrowJavaScriptException(throwException)
       .pollingEvery(1000, TimeUnit.MILLISECONDS);
     if (timeout > -1) {
       // -1 means INFINITE, no timeout.
@@ -165,6 +168,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
       public void webWindowContentChanged(final WebWindowEvent event) {
         Window window = (Window) event.getWebWindow().getScriptObject();
         registerEventListeners(window);
+        publishConfiguration(window);
       }
 
       /**
@@ -218,6 +222,19 @@ public abstract class AbstractRunner implements WebDriverRunner {
     for (EventDefinition definition : eventDefinitions) {
       ScriptUtils.addEventListener(window, definition.getEventType(),
           definition.getHandler(), definition.isUseCapture());
+    }
+  }
+
+  /** Publishes runner configuration properties to JavaScript's global scope.
+   *
+   * @param window Window to expose configuration. Cannot be null.
+   */
+  private void publishConfiguration(final Window window) {
+    Properties config = getContext().getRunnerConfiguration();
+
+    for (Object key : config.keySet()) {
+      window.defineProperty((String) key, config.get(key),
+          ScriptableObject.READONLY);
     }
   }
 

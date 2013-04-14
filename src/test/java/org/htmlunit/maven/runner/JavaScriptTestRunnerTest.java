@@ -9,14 +9,11 @@ import java.util.List;
 import java.util.Properties;
 
 import org.codehaus.plexus.util.ReflectionUtils;
-import org.htmlunit.javascript.EventHandler;
 import org.htmlunit.maven.RunnerContext;
 import org.htmlunit.maven.runner.JavaScriptTestRunner;
 import org.htmlunit.maven.runner.JavaScriptTestRunner.DefaultAttributes;
 import org.junit.Before;
 import org.junit.Test;
-
-import com.gargoylesoftware.htmlunit.javascript.host.Event;
 
 /** Tests the {@link JavaScriptTestRunner} class.
  */
@@ -43,10 +40,16 @@ public class JavaScriptTestRunnerTest {
         + "~classpath:org/htmlunit/maven/TestRunner.js");
     runnerConfig.put(DefaultAttributes.TEST_FILES.getKey(),
         "classpath:org/htmlunit/maven/*Test.js");
+    // Properties to test JavaScript's global scope.
+    runnerConfig.put("PROP_FOO", "FOO");
+    runnerConfig.put("PROP_BAR", "BAR");
+
     context.setRunnerConfiguration(runnerConfig);
     context.setTimeout(10);
     context.getWebClientConfiguration().setProperty("javaScriptEnabled",
         String.valueOf(true));
+    context.getWebClientConfiguration()
+      .setProperty("throwExceptionOnScriptError", String.valueOf(true));
     runner = new JavaScriptTestRunner();
   }
 
@@ -84,21 +87,20 @@ public class JavaScriptTestRunnerTest {
   }
 
   @Test
-  @SuppressWarnings("serial")
   public void run() {
-    runner.initialize(context);
-    runner.addEventListener(Event.TYPE_BEFORE_UNLOAD, new EventHandler() {
-      private boolean aboutBlank = true;
+    runner = new JavaScriptTestRunner() {
+      @Override
+      protected void testFinished(final URL test) {
+        String result = runner.getDriver().findElementById("main").getText();
 
-      public void handleEvent(final org.w3c.dom.events.Event event) {
-        if (!aboutBlank) {
-          String result = runner.getDriver().findElementById("result")
-              .getText();
-          assertThat(result.equals("FOO") || result.equals("BAR"), is(true));
+        if (test.getFile().endsWith("FooWidgetTest.js")) {
+          assertThat(result, is("FOO"));
+        } else if (test.getFile().endsWith("BarWidgetTest.js")) {
+          assertThat(result, is("BAR"));
         }
-        aboutBlank = false;
       }
-    }, false);
+    };
+    runner.initialize(context);
     runner.run();
   }
 

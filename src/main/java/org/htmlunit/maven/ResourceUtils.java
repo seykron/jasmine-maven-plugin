@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -83,6 +84,17 @@ public final class ResourceUtils {
       throw new RuntimeException(
           "Cannot open connection to check JAR resource.", cause);
     }
+  }
+
+  /** Expands a single resource expression into physical resources.
+   * It performs the logical disjunction of exclusion patterns and returns
+   * only included resources.
+   *
+   * @param expression Resource expression to expand. Cannot be null.
+   * @return A valid list of resources. Never returns null.
+   */
+  public static List<URL> expand(final String expression) {
+    return expand(Arrays.asList(expression));
   }
 
   /** Expands a set of resource expressions into physical resources.
