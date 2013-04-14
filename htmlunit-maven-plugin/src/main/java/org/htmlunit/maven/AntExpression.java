@@ -41,7 +41,7 @@ public class AntExpression {
    */
   public AntExpression(final String theExpression) {
     Validate.notEmpty(theExpression, "The expression cannot be null or empty");
-    expression = theExpression;
+    expression = theExpression.trim();
     parse();
   }
 

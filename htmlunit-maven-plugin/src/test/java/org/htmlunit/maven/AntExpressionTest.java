@@ -13,12 +13,12 @@ public class AntExpressionTest {
 
   @Test
   public void protocol() {
-    AntExpression expression1 = new AntExpression("classpath:/foo/**/ba?");
-    AntExpression expression2 = new AntExpression("~classpath:/foo/**/ba?");
-    AntExpression expression3 = new AntExpression("/foo/**/ba?");
-    AntExpression expression4 = new AntExpression("~/foo/**/ba?");
-    AntExpression expression5 = new AntExpression("**/ba?");
-    AntExpression expression6 = new AntExpression("~**/ba?");
+    AntExpression expression1 = new AntExpression("  classpath:/foo/**/ba?  ");
+    AntExpression expression2 = new AntExpression("  ~classpath:/foo/**/ba?  ");
+    AntExpression expression3 = new AntExpression("  /foo/**/ba?  ");
+    AntExpression expression4 = new AntExpression("  ~/foo/**/ba?  ");
+    AntExpression expression5 = new AntExpression("  **/ba?  ");
+    AntExpression expression6 = new AntExpression("  ~**/ba?  ");
 
     assertThat(expression1.getProtocol(), is("classpath"));
     assertThat(expression2.getProtocol(), is("classpath"));
@@ -30,13 +30,13 @@ public class AntExpressionTest {
 
   @Test
   public void rootDir() {
-    AntExpression expression1 = new AntExpression("classpath:/foo/**/ba?");
-    AntExpression expression2 = new AntExpression("~classpath:foo/**/ba?");
-    AntExpression expression3 = new AntExpression("/foo/**/ba?");
-    AntExpression expression4 = new AntExpression("~/foo/**/ba?");
-    AntExpression expression5 = new AntExpression("**/ba?");
-    AntExpression expression6 = new AntExpression("~**/ba?");
-    AntExpression expression7 = new AntExpression("foo/bar/test.ext");
+    AntExpression expression1 = new AntExpression("  classpath:/foo/**/ba?  ");
+    AntExpression expression2 = new AntExpression("  ~classpath:foo/**/ba?  ");
+    AntExpression expression3 = new AntExpression("  /foo/**/ba?  ");
+    AntExpression expression4 = new AntExpression("  ~/foo/**/ba?  ");
+    AntExpression expression5 = new AntExpression("  **/ba?  ");
+    AntExpression expression6 = new AntExpression("  ~**/ba?  ");
+    AntExpression expression7 = new AntExpression("  foo/bar/test.ext  ");
 
     assertThat(expression1.getRootDir(), is("/foo"));
     assertThat(expression2.getRootDir(), is("foo"));
@@ -49,13 +49,13 @@ public class AntExpressionTest {
 
   @Test
   public void pattern() {
-    AntExpression expression1 = new AntExpression("classpath:/foo/**/ba?");
-    AntExpression expression2 = new AntExpression("~classpath:/foo/**/ba?");
-    AntExpression expression3 = new AntExpression("/foo/**/ba?");
-    AntExpression expression4 = new AntExpression("~/foo/**/ba?");
-    AntExpression expression5 = new AntExpression("**/ba?");
-    AntExpression expression6 = new AntExpression("~**/ba?");
-    AntExpression expression7 = new AntExpression("foo/bar/test.ext");
+    AntExpression expression1 = new AntExpression("  classpath:/foo/**/ba?  ");
+    AntExpression expression2 = new AntExpression("  ~classpath:/foo/**/ba?  ");
+    AntExpression expression3 = new AntExpression("  /foo/**/ba?  ");
+    AntExpression expression4 = new AntExpression("  ~/foo/**/ba?  ");
+    AntExpression expression5 = new AntExpression("  **/ba?  ");
+    AntExpression expression6 = new AntExpression("  ~**/ba?  ");
+    AntExpression expression7 = new AntExpression("  foo/bar/test.ext  ");
 
     assertThat(expression1.getPattern(), is("**/ba?"));
     assertThat(expression2.getPattern(), is("**/ba?"));
@@ -68,12 +68,12 @@ public class AntExpressionTest {
 
   @Test
   public void exclusion() {
-    AntExpression expression1 = new AntExpression("classpath:/foo/**/ba?");
-    AntExpression expression2 = new AntExpression("~classpath:/foo/**/ba?");
-    AntExpression expression3 = new AntExpression("/foo/**/ba?");
-    AntExpression expression4 = new AntExpression("~/foo/**/ba?");
-    AntExpression expression5 = new AntExpression("**/ba?");
-    AntExpression expression6 = new AntExpression("~**/ba?");
+    AntExpression expression1 = new AntExpression("  classpath:/foo/**/ba?  ");
+    AntExpression expression2 = new AntExpression("  ~classpath:/foo/**/ba?  ");
+    AntExpression expression3 = new AntExpression("  /foo/**/ba?  ");
+    AntExpression expression4 = new AntExpression("  ~/foo/**/ba?  ");
+    AntExpression expression5 = new AntExpression("  **/ba?  ");
+    AntExpression expression6 = new AntExpression("  ~**/ba?  ");
 
     assertThat(expression1.isExclusion(), is(false));
     assertThat(expression2.isExclusion(), is(true));

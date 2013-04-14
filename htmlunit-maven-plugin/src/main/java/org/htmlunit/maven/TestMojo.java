@@ -1,6 +1,10 @@
 package org.htmlunit.maven;
 
 import java.lang.reflect.Constructor;
+import java.net.URL;
+import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
@@ -22,6 +26,7 @@ import com.gargoylesoftware.htmlunit.WebClient;
  * @component
  * @goal run
  * @phase test
+ * @requiresDependencyResolution test
  */
 public class TestMojo extends AbstractMojo {
 
@@ -64,13 +69,13 @@ public class TestMojo extends AbstractMojo {
   /** Properties to configure the runner.
    * @parameter
    */
-  private Properties runnerConfiguration;
+  private Map<String, String> runnerConfiguration;
 
 
   /** Properties to configure the {@link WebClient}.
    * @parameter
    */
-  private Properties webClientConfiguration;
+  private Map<String, String> webClientConfiguration;
 
   /** Indicates if dependencies will be added to the current thread class
    * loader.
@@ -110,9 +115,16 @@ public class TestMojo extends AbstractMojo {
     WebDriverRunner runner = createRunner();
     RunnerContext context = new RunnerContext();
     context.setBrowserVersion(getBrowserVersion());
-    context.setWebClientConfiguration(webClientConfiguration);
+
+    Properties runnerProperties = new Properties();
+    runnerProperties.putAll(runnerConfiguration);
+    context.setRunnerConfiguration(runnerProperties);
+
+    Properties webClientProperties = new Properties();
+    webClientProperties.putAll(webClientConfiguration);
+    context.setWebClientConfiguration(webClientProperties);
+
     context.setTimeout(timeout);
-    context.setRunnerConfiguration(runnerConfiguration);
     context.setLog(getLog());
 
     try {
@@ -172,11 +184,38 @@ public class TestMojo extends AbstractMojo {
   private ClassLoader createDependenciesClassLoader() {
     ClassLoaderBuilder builder = new ClassLoaderBuilder(artifactResolver,
         metadataSource, localRepository, project);
+    ClassLoader classLoader = builder.includeDependencies(dependenciesClassLoader)
+        .includeTestDependencies(testDependenciesClassLoader)
+        .setParent(Thread.currentThread().getContextClassLoader())
+        .create();
+    registerContextUrlStreamHandlerFactory(classLoader);
 
-    return builder.includeDependencies(dependenciesClassLoader)
-      .includeTestDependencies(testDependenciesClassLoader)
-      .setParent(Thread.currentThread().getContextClassLoader())
-      .create();
+    return classLoader;
+  }
+
+  /** Registers a url handler factory to resolve stream handlers loaded
+   * by the specified class loader.
+   *
+   * @param classLoader Class loader that loaded stream handlers. Cannot be
+   *    null.
+   */
+  private void registerContextUrlStreamHandlerFactory(
+      final ClassLoader classLoader) {
+    URL.setURLStreamHandlerFactory(new URLStreamHandlerFactory() {
+      @SuppressWarnings("unchecked")
+      public URLStreamHandler createURLStreamHandler(final String protocol) {
+        try {
+          Class<? extends URLStreamHandler> handlerClass;
+          handlerClass = (Class<? extends URLStreamHandler>) classLoader
+              .loadClass("sun.net.www.protocol." + protocol + ".Handler");
+          Constructor<? extends URLStreamHandler> ctor;
+          ctor = handlerClass.getConstructor();
+          return ctor.newInstance();
+        } catch (Exception cause) {
+          throw new RuntimeException("Cannot resolve stream handler.", cause);
+        }
+      }
+    });
   }
 
   /** Determines the htmlunit browser version to use.

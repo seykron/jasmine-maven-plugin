@@ -3,7 +3,6 @@ package org.htmlunit.maven.runner;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +31,7 @@ public class JavaScriptTestRunner extends AbstractRunner {
   private static final String TEST_RUNNER_SUFFIX = "Runner.html";
 
   /** Path to the test runner template. */
-  private String testRunnerTemplate = DEFAULT_TEMPLATE;
+  private URL testRunnerTemplate;
 
   /** Script included after page load in order to run the tests; can be
    * null. */
@@ -61,10 +60,24 @@ public class JavaScriptTestRunner extends AbstractRunner {
   protected void configure(final RunnerContext theConfiguration) {
     Properties runnerConfig = theConfiguration.getRunnerConfiguration();
 
-    if (DefaultAttributes.TEST_RUNNER_TEMPLATE.in(runnerConfig)) {
-      testRunnerTemplate = (String) runnerConfig
-          .get(DefaultAttributes.TEST_RUNNER_TEMPLATE.getKey());
+    try {
+      if (DefaultAttributes.TEST_RUNNER_TEMPLATE.in(runnerConfig)) {
+        String template = (String) runnerConfig
+            .get(DefaultAttributes.TEST_RUNNER_TEMPLATE.getKey());
+        List<URL> urls = ResourceUtils.expand(template);
+
+        if (urls.size() > 0) {
+          testRunnerTemplate = urls.get(0);
+        } else {
+          testRunnerTemplate = new URL(template);
+        }
+      } else {
+        testRunnerTemplate = new URL(DEFAULT_TEMPLATE);
+      }
+    } catch (MalformedURLException cause) {
+      throw new RuntimeException("Cannot resolve runner template.");
     }
+
     if (DefaultAttributes.TEST_RUNNER_SCRIPT.in(runnerConfig)) {
       testRunnerScript = expand((String) runnerConfig
           .get(DefaultAttributes.TEST_RUNNER_SCRIPT.getKey())).get(0);
@@ -200,15 +213,9 @@ public class JavaScriptTestRunner extends AbstractRunner {
    * @return A valid template. Never returns null.
    */
   private StringTemplate createTestRunnerTemplate() {
-    try {
-      URL url = URI.create(testRunnerTemplate).toURL();
-      String htmlTemplate = ResourceUtils.readAsText(url);
+    String htmlTemplate = ResourceUtils.readAsText(testRunnerTemplate);
 
-      return new StringTemplate(htmlTemplate, DefaultTemplateLexer.class);
-    } catch (MalformedURLException cause) {
-      throw new RuntimeException("Test runner template URL isn't valid.",
-          cause);
-    }
+    return new StringTemplate(htmlTemplate, DefaultTemplateLexer.class);
   }
 
   /** Enum of attributes available in the default test runner template.

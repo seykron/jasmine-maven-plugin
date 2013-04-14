@@ -55,9 +55,7 @@ public class JavaScriptTestRunnerTest {
 
   @Test
   @SuppressWarnings("rawtypes")
-  public void configure() {
-    assertThat((String) getValue("testRunnerTemplate"),
-        is("classpath:/org/htmlunit/maven/DefaultTestRunner.html"));
+  public void configure() throws Exception {
     assertThat(getValue("testRunnerScript"), is(nullValue()));
     assertThat(((List) getValue("bootstrapScripts")).size(), is(0));
     assertThat(((List) getValue("sourceScripts")).size(), is(0));
@@ -69,8 +67,9 @@ public class JavaScriptTestRunnerTest {
 
     runner.configure(context);
 
-    assertThat((String) getValue("testRunnerTemplate"),
-        is("classpath:org/htmlunit/maven/TestRunner.html"));
+    assertThat(((URL) getValue("testRunnerTemplate")).equals(
+        new URL("classpath:org/htmlunit/maven/TestRunner.html")),
+        is(true));
     assertThat(((URL) getValue("testRunnerScript")).toString()
         .endsWith("org/htmlunit/maven/TestRunner.js"), is(true));
     assertThat(((List) getValue("bootstrapScripts")).size(), is(1));

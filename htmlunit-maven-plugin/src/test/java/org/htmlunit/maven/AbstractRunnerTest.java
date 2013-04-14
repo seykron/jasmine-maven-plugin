@@ -6,12 +6,10 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Properties;
 
-import org.apache.commons.lang.StringUtils;
 import org.htmlunit.javascript.EventHandler;
 import org.htmlunit.javascript.EventTargetAdapter;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.RunnerContext;
-import org.htmlunit.protocol.classpath.Handler;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -54,10 +52,6 @@ public class AbstractRunnerTest {
         instanceOf(NicelyResynchronizingAjaxController.class));
     assertThat(runner.getContext(), is(context));
     assertThat(runner.getDriver(), is(notNullValue()));
-    // Checks url stream handler registration.
-    assertThat(System.getProperty("java.protocol.handler.pkgs"),
-        is(StringUtils.substringBeforeLast(Handler.class.getPackage().getName(),
-            ".")));
     verify(context);
   }
 

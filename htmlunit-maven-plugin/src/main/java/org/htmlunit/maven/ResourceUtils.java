@@ -120,6 +120,6 @@ public final class ResourceUtils {
       }
     }
 
-    return (List<URL>) CollectionUtils.disjunction(includes, excludes);
+    return (List<URL>) CollectionUtils.subtract(includes, excludes);
   }
 }

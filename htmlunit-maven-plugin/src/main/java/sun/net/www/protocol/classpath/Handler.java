@@ -1,4 +1,4 @@
-package org.htmlunit.protocol.classpath;
+package sun.net.www.protocol.classpath;
 
 import java.io.IOException;
 import java.net.URL;

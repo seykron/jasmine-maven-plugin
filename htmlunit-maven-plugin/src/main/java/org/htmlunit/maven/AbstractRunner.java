@@ -9,14 +9,15 @@ import java.util.concurrent.TimeUnit;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
 import org.apache.http.impl.conn.SchemeRegistryFactory;
 import org.htmlunit.javascript.ScriptUtils;
-import org.htmlunit.protocol.classpath.Handler;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.IncorrectnessListener;
 import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
 import com.gargoylesoftware.htmlunit.StringWebResponse;
 import com.gargoylesoftware.htmlunit.WebClient;
@@ -32,6 +33,10 @@ import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
  * methods.
  */
 public abstract class AbstractRunner implements WebDriverRunner {
+
+  /** Class logger. */
+  private static final Logger LOG = LoggerFactory
+      .getLogger(AbstractRunner.class);
 
   /** Runner configuration; it's valid only after initialize(). */
   private RunnerContext context;
@@ -59,12 +64,6 @@ public abstract class AbstractRunner implements WebDriverRunner {
    */
   public void initialize(final RunnerContext theContext) {
     Validate.notNull(theContext, "The context cannot be null.");
-
-    String classPathHandler;
-    classPathHandler = StringUtils.substringBeforeLast(
-        Handler.class.getPackage().getName(), ".");
-
-    System.setProperty("java.protocol.handler.pkgs", classPathHandler);
 
     context = theContext;
     driver = new HtmlUnitDriver(context.getBrowserVersion()) {
@@ -154,6 +153,11 @@ public abstract class AbstractRunner implements WebDriverRunner {
     WebClientConfigurer configurer = new WebClientConfigurer(client);
     configurer.configure(context.getWebClientConfiguration());
     client.setAjaxController(new NicelyResynchronizingAjaxController());
+    client.setIncorrectnessListener(new IncorrectnessListener() {
+      public void notify(final String message, final Object origin) {
+        LOG.trace(message, origin);
+      }
+    });
     client.setJavaScriptEnabled(true);
     client.addWebWindowListener(new WebWindowListener() {
 
