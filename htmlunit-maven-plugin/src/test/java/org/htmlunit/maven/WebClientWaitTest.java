@@ -18,6 +18,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.gargoylesoftware.htmlunit.ScriptException;
 import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.WebWindowEvent;
 import com.gargoylesoftware.htmlunit.WebWindowListener;
@@ -31,13 +32,18 @@ import com.gargoylesoftware.htmlunit.javascript.JavaScriptErrorListener;
 public class WebClientWaitTest {
 
   private WebClient client;
+  private WebClientOptions options;
   private Capture<JavaScriptErrorListener> capturedErrorListener;
   private Capture<WebWindowListener> capturedWebWindowListener;
 
   @Before
   public void setUp() {
+    options = createMock(WebClientOptions.class);
+    options.setThrowExceptionOnScriptError(false);
+    replay(options);
+
     client = createMock(WebClient.class);
-    client.setThrowExceptionOnScriptError(false);
+    expect(client.getOptions()).andReturn(options);
     capturedErrorListener = new Capture<JavaScriptErrorListener>();
     capturedWebWindowListener = new Capture<WebWindowListener>();
     client.addWebWindowListener(capture(capturedWebWindowListener));
@@ -56,7 +62,7 @@ public class WebClientWaitTest {
     WebClientWait wait = new WebClientWait(client);
     assertThat(wait.getWebClient(), is(client));
 
-    verify(client, window);
+    verify(client, options, window);
   }
 
   @Test
@@ -85,7 +91,7 @@ public class WebClientWaitTest {
     listener.webWindowClosed(closeEvent);
     assertThat(wait.isDone(), is(true));
 
-    verify(client, window, contentChangedEvent, closeEvent);
+    verify(client, options, window, contentChangedEvent, closeEvent);
   }
 
   @Test
@@ -111,6 +117,8 @@ public class WebClientWaitTest {
       .withTimeout(5000, TimeUnit.MILLISECONDS);
     Thread.sleep(500);
     wait.start();
+
+    verify(client, options);
   }
 
   @Test(expected = TimeoutException.class)
@@ -131,6 +139,7 @@ public class WebClientWaitTest {
     wait.pollingEvery(500, TimeUnit.MILLISECONDS)
       .withTimeout(1000, TimeUnit.MILLISECONDS);
     wait.start();
+    verify(client, options);
   }
 
   @Test(expected = RuntimeException.class)
@@ -154,6 +163,7 @@ public class WebClientWaitTest {
     listener.scriptException(page, ex);
 
     wait.start();
+    verify(client, options);
   }
 
   @Test
@@ -177,5 +187,6 @@ public class WebClientWaitTest {
 
     wait.start();
     assertThat(wait.getException(), is((Exception) ex));
+    verify(client, options);
   }
 }

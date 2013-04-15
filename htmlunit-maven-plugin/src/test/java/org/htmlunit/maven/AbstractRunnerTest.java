@@ -7,7 +7,6 @@ import static org.junit.Assert.assertThat;
 import java.util.Properties;
 
 import org.htmlunit.javascript.EventHandler;
-import org.htmlunit.javascript.EventTargetAdapter;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.RunnerContext;
 import org.junit.Test;
@@ -33,7 +32,7 @@ public class AbstractRunnerTest {
       public void run() {
       }
     };
-    expect(context.getBrowserVersion()).andReturn(BrowserVersion.FIREFOX_3_6);
+    expect(context.getBrowserVersion()).andReturn(BrowserVersion.FIREFOX_17);
 
     Properties clientProps = new Properties();
     clientProps.put("homePage", "http://foo.bar");
@@ -46,8 +45,10 @@ public class AbstractRunnerTest {
     assertThat(runner.getDriver(), is(nullValue()));
 
     runner.initialize(context);
-    assertThat(runner.getWebClient().getHomePage(), is("http://foo.bar"));
-    assertThat(runner.getWebClient().isJavaScriptEnabled(), is(true));
+    assertThat(runner.getWebClient().getOptions().getHomePage(),
+        is("http://foo.bar"));
+    assertThat(runner.getWebClient().getOptions().isJavaScriptEnabled(),
+        is(true));
     assertThat(runner.getWebClient().getAjaxController(),
         instanceOf(NicelyResynchronizingAjaxController.class));
     assertThat(runner.getContext(), is(context));
@@ -68,13 +69,11 @@ public class AbstractRunnerTest {
     };
     runner.initialize(new RunnerContext());
     runner.addEventListener(Event.TYPE_DOM_DOCUMENT_LOADED, new EventHandler() {
-      public void handleEvent(final org.w3c.dom.events.Event event) {
+      @Override
+      public void handleEvent(final Event event) {
         assertThat(event.getCurrentTarget(), is(notNullValue()));
-
-        EventTargetAdapter target;
-        target = (EventTargetAdapter) event.getCurrentTarget();
-        assertThat(target.getOriginalTarget(), is(notNullValue()));
-        assertThat(target.getOriginalTarget(), instanceOf(Window.class));
+        assertThat(event.getCurrentTarget(), is(notNullValue()));
+        assertThat(event.getCurrentTarget(), instanceOf(Window.class));
       }
     }, false);
     runner.run();

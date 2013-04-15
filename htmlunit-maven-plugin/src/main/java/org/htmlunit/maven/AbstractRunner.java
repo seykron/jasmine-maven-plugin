@@ -11,7 +11,6 @@ import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.apache.commons.lang.Validate;
 import org.apache.http.impl.conn.SchemeRegistryFactory;
-import org.htmlunit.javascript.ScriptUtils;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.IncorrectnessListener;
 import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.StringWebResponse;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebConnection;
@@ -67,21 +67,37 @@ public abstract class AbstractRunner implements WebDriverRunner {
 
     context = theContext;
     driver = new HtmlUnitDriver(context.getBrowserVersion()) {
+      /** {@inheritDoc}
+       */
       @Override
       protected WebClient newWebClient(final BrowserVersion version) {
         client = new WebClient(version);
         return client;
       }
 
+      /** {@inheritDoc}
+       */
       @Override
       protected WebClient modifyWebClient(final WebClient theClient) {
         client.setWebConnection(createConnectionWrapper(client));
         configureWebClient(client);
         return client;
       };
+
+      /** Since version 2.32.0, selenium doesn't allow to use DOM in closed
+       * windows. We're currently assuming that closing window is the
+       * signal of test completed, so it's necessary to check the DOM after
+       * tests. We override the new selenium behaviour to make DOM work
+       * with closed windows.
+       */
+      @Override
+      protected Page lastPage() {
+        return getCurrentWindow().getEnclosedPage();
+      }
     };
     int timeout = context.getTimeout();
-    boolean throwException = client.isThrowExceptionOnScriptError();
+    boolean throwException = client.getOptions()
+        .isThrowExceptionOnScriptError();
     wait = new WebClientWait(client);
     wait.setThrowJavaScriptException(throwException)
       .pollingEvery(1000, TimeUnit.MILLISECONDS);
@@ -108,7 +124,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
     if (client.getCurrentWindow() != null
         && client.getCurrentWindow().getScriptObject() != null) {
       Window window = (Window) client.getCurrentWindow().getScriptObject();
-      ScriptUtils.addEventListener(window, eventType, handler, useCapture);
+      window.addEventListener(eventType, handler, useCapture);
     }
     eventDefinitions.add(new EventDefinition(eventType, handler, useCapture));
   }
@@ -158,7 +174,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
         LOG.trace(message, origin);
       }
     });
-    client.setJavaScriptEnabled(true);
+    client.getOptions().setJavaScriptEnabled(true);
     client.addWebWindowListener(new WebWindowListener() {
 
       /** {@inheritDoc}
@@ -224,7 +240,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
    */
   private void registerEventListeners(final Window window) {
     for (EventDefinition definition : eventDefinitions) {
-      ScriptUtils.addEventListener(window, definition.getEventType(),
+      window.addEventListener(definition.getEventType(),
           definition.getHandler(), definition.isUseCapture());
     }
   }

@@ -13,7 +13,7 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 public class RunnerContext {
 
   /** Htmlunit browser version; it's never null. */
-  private BrowserVersion browserVersion = BrowserVersion.FIREFOX_3_6;
+  private BrowserVersion browserVersion = BrowserVersion.FIREFOX_17;
 
   /** Properties to configure htmlunit web client; it's never null. */
   private Properties webClientConfiguration = new Properties();

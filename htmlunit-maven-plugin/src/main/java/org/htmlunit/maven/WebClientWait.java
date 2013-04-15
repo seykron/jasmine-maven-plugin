@@ -105,7 +105,7 @@ public class WebClientWait extends FluentWait<WebClient> {
    */
   private void initialize(final WebClient theClient) {
     theClient.addWebWindowListener(webWindowListener);
-    theClient.setThrowExceptionOnScriptError(false);
+    theClient.getOptions().setThrowExceptionOnScriptError(false);
     theClient.setJavaScriptErrorListener(javaScriptErrorListener);
 
     for (WebWindow webWindow : theClient.getWebWindows()) {

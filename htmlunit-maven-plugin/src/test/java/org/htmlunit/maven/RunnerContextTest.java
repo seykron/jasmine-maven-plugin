@@ -18,7 +18,7 @@ public class RunnerContextTest {
   @Test
   public void construct() {
     RunnerContext context = new RunnerContext();
-    assertThat(context.getBrowserVersion(), is(BrowserVersion.FIREFOX_3_6));
+    assertThat(context.getBrowserVersion(), is(BrowserVersion.FIREFOX_17));
     assertThat(context.getWebClientConfiguration(), is(notNullValue()));
     assertThat(context.getRunnerConfiguration(), is(notNullValue()));
     assertThat(context.getTimeout(), is(-1));
