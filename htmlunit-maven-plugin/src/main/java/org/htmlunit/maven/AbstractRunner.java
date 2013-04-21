@@ -26,6 +26,7 @@ import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebWindowEvent;
 import com.gargoylesoftware.htmlunit.WebWindowListener;
+import com.gargoylesoftware.htmlunit.javascript.host.Console;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
 
@@ -189,6 +190,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
         Window window = (Window) event.getWebWindow().getScriptObject();
         registerEventListeners(window);
         publishConfiguration(window);
+        window.setConsole(new Console());
       }
 
       /**

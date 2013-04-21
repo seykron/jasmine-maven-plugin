@@ -4,6 +4,7 @@ import static org.junit.Assert.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
@@ -24,5 +25,11 @@ public class HandlerTest {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     IOUtils.copy(input, output);
     assertThat(output.toString().contains("$testRunnerScript$"), is(true));
+  }
+
+  @Test(expected = IOException.class)
+  public void readUrl_notFound() throws Exception {
+    URL url = new URL("classpath:/not/found.js");
+    url.openStream();
   }
 }

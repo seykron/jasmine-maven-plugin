@@ -45,10 +45,21 @@ public class ResourceScannerTest {
   @Test
   public void create_fileSystem() {
     AntExpression expression;
-    expression = new AntExpression("org/htmlunit/**/*.js");
+    expression = new AntExpression("file:org/htmlunit/**/*.js");
 
     ResourceScanner scanner = ResourceScanner.create(expression);
     assertThat(scanner, instanceOf(FileSystemScanner.class));
     assertThat(scanner.getExpression(), is(expression));
+  }
+
+  @Test
+  public void create_remote() {
+    AntExpression expression;
+    expression = new AntExpression("http://foo.bar/test.js");
+
+    ResourceScanner scanner = ResourceScanner.create(expression);
+    assertThat(scanner.getExpression(), is(expression));
+    assertThat(scanner.list().size(), is(1));
+    assertThat(scanner.list().get(0).toString(), is("http://foo.bar/test.js"));
   }
 }

@@ -109,9 +109,27 @@ public class TestMojo extends AbstractMojo {
    */
   private int timeout;
 
+  /** Indicates whether to skip tests or not. Runners won't be processed
+   * if tests are skipped.
+   *
+   * @parameter expression="${skipTests}"
+   */
+  private boolean skipTests;
+
+  /** Enables test debugging. It starts a server and allows to connect from
+   * a browser.
+   *
+   * @parameter expression="${maven.surefire.debug}"
+   */
+  private boolean debugMode;
+
   /** Executes jasmine tests.
    */
   public void execute() throws MojoExecutionException, MojoFailureException {
+    if (skipTests) {
+      return;
+    }
+
     WebDriverRunner runner = createRunner();
     RunnerContext context = new RunnerContext();
     context.setBrowserVersion(getBrowserVersion());

@@ -1,7 +1,9 @@
 package org.htmlunit.maven;
 
 import java.io.File;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang.Validate;
@@ -37,9 +39,12 @@ public abstract class ResourceScanner {
         Validate.notNull(url, "Resource not found.");
 
         return new FileSystemScanner(new File(url.getFile()), expression);
-      } else {
+      } else if ("file".equals(expression.getProtocol())) {
         // Regular file system resource.
         return new FileSystemScanner(expression);
+      } else {
+        // Remote resource.
+        return new RemoteResourceScanner(expression);
       }
     }
   }
@@ -66,5 +71,31 @@ public abstract class ResourceScanner {
    */
   public AntExpression getExpression() {
     return expression;
+  }
+
+  /** Scanner to support remote resource expressions.
+   */
+  private static class RemoteResourceScanner extends ResourceScanner {
+
+    /** Creates the scanner and sets the related expression.
+     * @param theExpression Remote url expression. Cannot be null.
+     */
+    public RemoteResourceScanner(final AntExpression theExpression) {
+      super(theExpression);
+    }
+
+    /** {@inheritDoc}
+     */
+    @Override
+    public List<URL> list() {
+      String url = getExpression().getExpression();
+
+      try {
+        return Arrays.asList(new URL(url));
+      } catch (MalformedURLException cause) {
+        throw new RuntimeException("Cannot generate URL for remote resource: "
+            + url, cause);
+      }
+    }
   }
 }

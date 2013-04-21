@@ -32,7 +32,7 @@ public class JavaScriptTestRunnerTest {
         "classpath:org/htmlunit/maven/TestRunner.js");
     runnerConfig.put(DefaultAttributes.BOOTSTRAP_SCRIPTS.getKey(),
         "classpath:org/htmlunit/maven/Bootstrap.js;"
-        + "classpath:/rhinoDiff.txt");
+        + "http://code.jquery.com/jquery-1.9.1.js");
     runnerConfig.put(DefaultAttributes.SOURCE_SCRIPTS.getKey(),
         "classpath:org/htmlunit/maven/*.js;"
         + "~classpath:org/htmlunit/maven/*Test.js;"
@@ -43,6 +43,7 @@ public class JavaScriptTestRunnerTest {
     // Properties to test JavaScript's global scope.
     runnerConfig.put("PROP_FOO", "FOO");
     runnerConfig.put("PROP_BAR", "BAR");
+    runnerConfig.put("debugMode", false);
 
     context.setRunnerConfiguration(runnerConfig);
     context.setTimeout(10);
@@ -72,7 +73,7 @@ public class JavaScriptTestRunnerTest {
         is(true));
     assertThat(((URL) getValue("testRunnerScript")).toString()
         .endsWith("org/htmlunit/maven/TestRunner.js"), is(true));
-    assertThat(((List) getValue("bootstrapScripts")).size(), is(1));
+    assertThat(((List) getValue("bootstrapScripts")).size(), is(2));
     assertThat(((URL) ((List) getValue("bootstrapScripts")).get(0))
         .toString().endsWith("org/htmlunit/maven/Bootstrap.js"), is(true));
     assertThat(((List) getValue("sourceScripts")).size(), is(2));

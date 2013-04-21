@@ -45,16 +45,26 @@ public final class ResourceUtils {
    */
   public static String readAsText(final URL url) {
     Validate.notNull(url, "The url cannot be null.");
-    InputStream input = null;
     try {
-      input = url.openStream();
+      return readAsText(url.openStream());
+    } catch (IOException cause) {
+      throw new RuntimeException("Cannot read URL: " + url.toString(), cause);
+    }
+  }
+
+  /** Reads the specified input stream as text.
+   *
+   * @param input Input stream to read. Cannot be null.
+   * @return The input stream content as String. Never returns null.
+   */
+  public static String readAsText(final InputStream input) {
+    Validate.notNull(input, "The input stream cannot be null.");
+    try {
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      Validate.notNull(input, "The resource " + url.toString()
-          + " doesn't exist.");
       IOUtils.copy(input, output);
       return output.toString();
     } catch (IOException cause) {
-      throw new RuntimeException("Cannot read URL: " + url.toString(), cause);
+      throw new RuntimeException("Cannot read input stream.", cause);
     } finally {
       IOUtils.closeQuietly(input);
     }

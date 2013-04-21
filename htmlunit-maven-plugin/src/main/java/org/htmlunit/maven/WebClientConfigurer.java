@@ -40,7 +40,7 @@ public class WebClientConfigurer {
     for (Object property : configuration.keySet()) {
       try {
         String methodName = "set" + StringUtils.capitalize((String) property);
-        Statement stmt = new Statement(getWebClient(), methodName,
+        Statement stmt = new Statement(getWebClient().getOptions(), methodName,
             new Object[] { configuration.get(property)});
         stmt.execute();
       } catch (Exception cause) {

@@ -24,6 +24,10 @@ public class Handler extends URLStreamHandler {
     URL resourceUrl = Thread.currentThread().getContextClassLoader()
         .getResource(classPath);
 
+    if (resourceUrl == null) {
+      throw new IOException("Classpath resource not found: " + url.toString());
+    }
+
     return resourceUrl.openConnection();
   }
 }
