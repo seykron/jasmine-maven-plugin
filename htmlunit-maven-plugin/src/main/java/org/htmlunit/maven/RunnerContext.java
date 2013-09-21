@@ -27,6 +27,9 @@ public class RunnerContext {
   /** Maven logger. */
   private Log log;
 
+  /** Indicates whether the runner must run in debug mode or not. */
+  private boolean debugMode;
+
   /** Returns the htmlunit browser version.
    * @return A valid browser version, never returns null.
    */
@@ -108,5 +111,19 @@ public class RunnerContext {
   public void setLog(final Log theLog) {
     Validate.notNull(theLog, "The logger cannot be null.");
     log = theLog;
+  }
+
+  /** Sets whether the runner must run in debug mode or not.
+   * @param isDebugMode True to run in debug mode, false otherwise.
+   */
+  public void setDebugMode(final boolean isDebugMode) {
+    debugMode = isDebugMode;
+  }
+
+  /** Indicates whether the runner must run in debug mode or not.
+   * @return Returns true to run in debug mode, false otherwise.
+   */
+  public boolean isDebugMode() {
+    return debugMode;
   }
 }

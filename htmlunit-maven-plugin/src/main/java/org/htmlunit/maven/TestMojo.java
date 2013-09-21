@@ -125,6 +125,7 @@ public class TestMojo extends AbstractMojo {
 
   /** Executes jasmine tests.
    */
+  @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
     if (skipTests) {
       return;
@@ -134,16 +135,21 @@ public class TestMojo extends AbstractMojo {
     RunnerContext context = new RunnerContext();
     context.setBrowserVersion(getBrowserVersion());
 
-    Properties runnerProperties = new Properties();
-    runnerProperties.putAll(runnerConfiguration);
-    context.setRunnerConfiguration(runnerProperties);
+    if (runnerConfiguration != null) {
+      Properties runnerProperties = new Properties();
+      runnerProperties.putAll(runnerConfiguration);
+      context.setRunnerConfiguration(runnerProperties);
+    }
 
-    Properties webClientProperties = new Properties();
-    webClientProperties.putAll(webClientConfiguration);
-    context.setWebClientConfiguration(webClientProperties);
+    if (webClientConfiguration != null) {
+      Properties webClientProperties = new Properties();
+      webClientProperties.putAll(webClientConfiguration);
+      context.setWebClientConfiguration(webClientProperties);
+    }
 
     context.setTimeout(timeout);
     context.setLog(getLog());
+    context.setDebugMode(debugMode);
 
     try {
       getLog().info("Initializing " + runner.getName());
@@ -220,6 +226,7 @@ public class TestMojo extends AbstractMojo {
   private void registerContextUrlStreamHandlerFactory(
       final ClassLoader classLoader) {
     URL.setURLStreamHandlerFactory(new URLStreamHandlerFactory() {
+      @Override
       @SuppressWarnings("unchecked")
       public URLStreamHandler createURLStreamHandler(final String protocol) {
         try {

@@ -85,14 +85,11 @@ public class JavaScriptTestRunner extends AbstractRunner {
     Properties runnerConfig = theConfiguration.getRunnerConfiguration();
 
     try {
-      if (DefaultAttributes.DEBUG_MODE.in(runnerConfig)) {
-        debugMode = (Boolean) runnerConfig.get(
-            DefaultAttributes.DEBUG_MODE.getKey());
-      }
+      debugMode = theConfiguration.isDebugMode();
 
       if (DefaultAttributes.DEBUG_PORT.in(runnerConfig)) {
-        debugPort = (Integer) runnerConfig.get(
-            DefaultAttributes.DEBUG_PORT.getKey());
+        debugPort = Integer.valueOf((String) runnerConfig.get(
+            DefaultAttributes.DEBUG_PORT.getKey()));
       }
 
       if (DefaultAttributes.TEST_RUNNER_TEMPLATE.in(runnerConfig)) {
@@ -273,43 +270,43 @@ public class JavaScriptTestRunner extends AbstractRunner {
    */
   private void runServer() {
     try {
+      /** HTTP server for debug mode.
+       */
+      TestDebugServer debugServer = new TestDebugServer(debugPort) {
+        /** {@inheritDoc}
+         */
+        @Override
+        public URL getRunner(final URL testFile) {
+          return createTestRunnerFile(testFile);
+        }
+
+        /** Adds the runner configuration to the window's global scope in order
+         * to keep compatibility with non-debug tests.
+         * <p>
+         * {@inheritDoc}
+         * </p>
+         */
+        @Override
+        protected InputStream getDebugScript() {
+          Set<Entry<Object, Object>> entries = getContext()
+              .getRunnerConfiguration().entrySet();
+          StringBuilder debugCode = new StringBuilder();
+
+          for (Entry<Object, Object> entry : entries) {
+            debugCode.append("window[\"" + entry.getKey() + "\"] = \""
+                + entry.getValue() + "\";\n");
+          }
+
+          return new ByteArrayInputStream(debugCode.toString().getBytes());
+        }
+      };
+
       debugServer.setTestFiles(testFiles);
       debugServer.start();
     } catch (IOException cause) {
       throw new RuntimeException("Cannot start web server.", cause);
     }
   }
-
-  /** HTTP server for debug mode.
-   */
-  private TestDebugServer debugServer = new TestDebugServer(debugPort) {
-    /** {@inheritDoc}
-     */
-    @Override
-    public URL getRunner(final URL testFile) {
-      return createTestRunnerFile(testFile);
-    }
-
-    /** Adds the runner configuration to the window's global scope in order to
-     * keep compatibility with non-debug tests.
-     * <p>
-     * {@inheritDoc}
-     * </p>
-     */
-    @Override
-    protected InputStream getDebugScript() {
-      Set<Entry<Object, Object>> entries = getContext()
-          .getRunnerConfiguration().entrySet();
-      StringBuilder debugCode = new StringBuilder();
-
-      for (Entry<Object, Object> entry : entries) {
-        debugCode.append("window[\"" + entry.getKey() + "\"] = \""
-            + entry.getValue() + "\";\n");
-      }
-
-      return new ByteArrayInputStream(debugCode.toString().getBytes());
-    }
-  };
 
   /** Enum of attributes available in the default test runner template.
    */
