@@ -3,11 +3,12 @@ package org.htmlunit.maven.runner;
 import java.net.URL;
 
 import org.antlr.stringtemplate.StringTemplate;
+import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.ResourceUtils;
 
-/** Runs tests from HTML files.
+/** Runner to load tests from plain HTML files.
  */
-public class HtmlTestRunner extends JavaScriptTestRunner {
+public class HtmlTestRunner extends AbstractRunner {
 
   /** Considers the test file as HTML resource and loads the mark-up into the
    * template.
@@ -17,7 +18,7 @@ public class HtmlTestRunner extends JavaScriptTestRunner {
   protected void loadTest(final StringTemplate runnerTemplate,
       final URL test) {
     String htmlTest = ResourceUtils.readAsText(test);
-    runnerTemplate.setAttribute(DefaultAttributes.TEST_FILES.getKey(),
+    runnerTemplate.setAttribute("testFiles",
         htmlTest);
   }
 }

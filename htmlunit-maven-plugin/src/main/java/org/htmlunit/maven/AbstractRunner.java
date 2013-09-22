@@ -1,14 +1,26 @@
 package org.htmlunit.maven;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import org.antlr.stringtemplate.StringTemplate;
+import org.antlr.stringtemplate.language.DefaultTemplateLexer;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.Validate;
 import org.apache.http.impl.conn.SchemeRegistryFactory;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
@@ -32,12 +44,27 @@ import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
 
 /** Support for runner. It initializes configuration and provides utility
  * methods.
+ *
+ * <p>
+ * When JavaScript is enabled, it supports three scripts loading phases:
+ * bootstrap, sources and test files. For further information look at
+ * {@link RunnerContext} documentation.
+ * </p>
+ *
+ * <p>
+ * If debug mode is enabled, it starts an HTTP server at
+ * {@link RunnerContext#getDebugPort()} port instead of running each single
+ * test.
+ * </p>
  */
 public abstract class AbstractRunner implements WebDriverRunner {
 
   /** Class logger. */
   private static final Logger LOG = LoggerFactory
       .getLogger(AbstractRunner.class);
+
+  /** Test runner file name. */
+  private static final String TEST_RUNNER_SUFFIX = "Runner.html";
 
   /** Runner configuration; it's valid only after initialize(). */
   private RunnerContext context;
@@ -56,18 +83,22 @@ public abstract class AbstractRunner implements WebDriverRunner {
    * initialize(). */
   private WebClientWait wait;
 
-  /** Configures the runner. It's invoked during the runner initialization.
-   * @param context Context to configure the runner. Cannot be null.
+  /** Loads a single test file into test runner template.
+   *
+   * @param runnerTemplate Current runner template. Cannot be null.
+   * @param test Test to load, as a pattern. Cannot be null.
    */
-  protected abstract void configure(final RunnerContext context);
+  protected abstract void loadTest(final StringTemplate runnerTemplate,
+      final URL test);
 
   /** {@inheritDoc}
    */
+  @Override
   public void initialize(final RunnerContext theContext) {
     Validate.notNull(theContext, "The context cannot be null.");
 
     context = theContext;
-    driver = new HtmlUnitDriver(context.getBrowserVersion()) {
+    driver = new HtmlUnitDriver(getContext().getBrowserVersion()) {
       /** {@inheritDoc}
        */
       @Override
@@ -96,7 +127,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
         return getCurrentWindow().getEnclosedPage();
       }
     };
-    int timeout = context.getTimeout();
+    int timeout = getContext().getTimeout();
     boolean throwException = client.getOptions()
         .isThrowExceptionOnScriptError();
     wait = new WebClientWait(client);
@@ -106,7 +137,18 @@ public abstract class AbstractRunner implements WebDriverRunner {
       // -1 means INFINITE, no timeout.
       wait.withTimeout(timeout, TimeUnit.SECONDS);
     }
-    configure(context);
+    configureRunner(context);
+  }
+
+  /** {@inheritDoc}
+   */
+  @Override
+  public void run() {
+    if (getContext().isDebugMode()) {
+      runServer();
+    } else {
+      runDriver();
+    }
   }
 
   /** Adds an event listener to the current window, if any. The event will be
@@ -130,7 +172,9 @@ public abstract class AbstractRunner implements WebDriverRunner {
     eventDefinitions.add(new EventDefinition(eventType, handler, useCapture));
   }
 
-  /** Returns the runner configuration.
+  /** Returns the runner configuration. Can be overriden to extend the default
+   * context.
+   *
    * @return Returns the current configuration, or null if this runner isn't
    *    yet initialized.
    */
@@ -157,8 +201,15 @@ public abstract class AbstractRunner implements WebDriverRunner {
 
   /** {@inheritDoc}
    */
+  @Override
   public String getName() {
     return getClass().getName();
+  }
+
+  /** Configures the runner. It's invoked during the runner initialization.
+   * @param context Context to configure the runner. Cannot be null.
+   */
+  protected void configureRunner(final RunnerContext context) {
   }
 
   /** Allows to modify web client just after creation. By default it applies
@@ -168,9 +219,10 @@ public abstract class AbstractRunner implements WebDriverRunner {
    */
   protected void configureWebClient(final WebClient client) {
     WebClientConfigurer configurer = new WebClientConfigurer(client);
-    configurer.configure(context.getWebClientConfiguration());
+    configurer.configure(getContext().getWebClientConfiguration());
     client.setAjaxController(new NicelyResynchronizingAjaxController());
     client.setIncorrectnessListener(new IncorrectnessListener() {
+      @Override
       public void notify(final String message, final Object origin) {
         LOG.trace(message, origin);
       }
@@ -180,12 +232,14 @@ public abstract class AbstractRunner implements WebDriverRunner {
 
       /** {@inheritDoc}
        */
+      @Override
       public void webWindowOpened(final WebWindowEvent event) {
       }
 
       /** Adds registered event listeners to the window.
        * {@inheritDoc}
        */
+      @Override
       public void webWindowContentChanged(final WebWindowEvent event) {
         Window window = (Window) event.getWebWindow().getScriptObject();
         registerEventListeners(window);
@@ -196,15 +250,150 @@ public abstract class AbstractRunner implements WebDriverRunner {
       /**
        * {@inheritDoc}
        */
+      @Override
       public void webWindowClosed(final WebWindowEvent event) {
       }
     });
+  }
+
+  /** Invoked when a single test finished. Useful to validate results. It's not
+   * supported when debug mode is enabled.
+   *
+   * @param test Test that finished. It's never null.
+   */
+  protected void testFinished(final URL test) {
   }
 
   /** Waits until all windows, even those opened in JavaScript, are closed.
    */
   protected void waitCompletion() {
     wait.start();
+  }
+
+  /** Can be overridden in order to prepare the runner template before writing
+   * to file and loading it into the web client.
+   *
+   * <p>
+   * By default it performs replacement of {@link DefaultAttributes}.
+   * </p>
+   * @param testRunner Template already loaded. Cannot be null.
+   */
+  protected void loadResources(final StringTemplate testRunner) {
+    URL testRunnerScript = getContext().getTestRunnerScript();
+    List<URL> bootstrapScripts = getContext().getBootstrapScripts();
+
+    if (testRunnerScript != null) {
+      testRunner.setAttribute("testRunnerScript",
+          ResourceUtils.generateScriptTags(Arrays.asList(testRunnerScript)));
+    }
+    if (getContext().isDebugMode()) {
+      bootstrapScripts.addAll(TestDebugServer
+          .getDebugBootstrapScripts("localhost", getContext().getDebugPort()));
+    }
+    testRunner.setAttribute("bootstrapScripts",
+        ResourceUtils.generateScriptTags(bootstrapScripts));
+    testRunner.setAttribute("sourceScripts",
+        ResourceUtils.generateScriptTags(getContext().getSourceScripts()));
+  }
+
+  /** Creates the test runner for the specified test and writes the processed
+   * template to the runner. By default, the test runner will be named as the
+   * test file plus a constant suffix.
+   *
+   * @param testFile Test script to create runner file for. Cannot be null.
+   * @return The generated runner URL. Never returns null.
+   */
+  protected URL createTestRunnerFile(final URL testFile) {
+    String baseName = FilenameUtils.getBaseName(testFile.getFile());
+    File runnerFile = new File(getContext().getOutputDirectory(),
+        baseName + TEST_RUNNER_SUFFIX);
+
+    // Generates a new template and prepares the environment.
+    String htmlTemplate = ResourceUtils.readAsText(
+        getContext().getTestRunnerTemplate());
+    StringTemplate template = new StringTemplate(htmlTemplate,
+        DefaultTemplateLexer.class);
+    loadResources(template);
+
+    // Loads test file into template.
+    loadTest(template, testFile);
+
+    try {
+      FileUtils.writeStringToFile(runnerFile, template.toString());
+      return runnerFile.toURI().toURL();
+    } catch (IOException cause) {
+      throw new RuntimeException("Cannot write runner file", cause);
+    }
+  }
+
+  /** Runs tests using the web driver.
+   *
+   * @param runnerFile Runner file to load into the web driver. Cannot be null.
+   * @param testFile Test file being executed. Cannot be null.
+   */
+  private void runDriver() {
+    for (URL testFile : getContext().getTestFiles()) {
+      URL runner = createTestRunnerFile(testFile);
+
+      // Executes the test and waits for completion.
+      getDriver().get(runner.toString());
+
+      waitCompletion();
+
+      testFinished(testFile);
+
+      // WebDriver doesn't switch automatically.
+      String windowHandle = (String) CollectionUtils
+          .get(getDriver().getWindowHandles(), 0);
+      getDriver().switchTo().window(windowHandle);
+    }
+  }
+
+  /** Runs tests using the a web server to allow debugging from browsers.
+   *
+   * @param runnerFile Runner file to load into the web driver. Cannot be null.
+   * @param testFile Test file being executed. Cannot be null.
+   */
+  private void runServer() {
+    try {
+      int debugPort = getContext().getDebugPort();
+
+      /** HTTP server for debug mode.
+       */
+      TestDebugServer debugServer = new TestDebugServer(debugPort) {
+        /** {@inheritDoc}
+         */
+        @Override
+        public URL getRunner(final URL testFile) {
+          return createTestRunnerFile(testFile);
+        }
+
+        /** Adds the runner configuration to the window's global scope in order
+         * to keep compatibility with non-debug tests.
+         * <p>
+         * {@inheritDoc}
+         * </p>
+         */
+        @Override
+        protected InputStream getDebugScript() {
+          Set<Entry<Object, Object>> entries = getContext()
+              .getRunnerConfiguration().entrySet();
+          StringBuilder debugCode = new StringBuilder();
+
+          for (Entry<Object, Object> entry : entries) {
+            debugCode.append("window[\"" + entry.getKey() + "\"] = \""
+                + entry.getValue() + "\";\n");
+          }
+
+          return new ByteArrayInputStream(debugCode.toString().getBytes());
+        }
+      };
+
+      debugServer.setTestFiles(getContext().getTestFiles());
+      debugServer.start();
+    } catch (IOException cause) {
+      throw new RuntimeException("Cannot start web server.", cause);
+    }
   }
 
   /** Creates a web connection that supports to load resources from the

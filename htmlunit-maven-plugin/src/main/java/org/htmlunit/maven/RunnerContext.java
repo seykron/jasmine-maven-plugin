@@ -1,16 +1,37 @@
 package org.htmlunit.maven;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.lang.Validate;
 import org.apache.maven.plugin.logging.Log;
+import org.htmlunit.TypedPropertyEditor;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 
 /** Contains common {@link WebDriverRunner} configuration. By default
  * target browser version is {@link BrowserVersion#FIREFOX_3_6}.
+ *
+ * <p>
+ * It also reads shared runner's configuration when
+ * {@link #setRunnerConfiguration} is called.
+ * </p>
+ * <p>
+ * {@link #getBootstrapScripts()}, {@link #getSourceScripts()},
+ * {@link #getTestFiles()} and {@link #getTestRunnerScript()} are valid only
+ * when JavaScript is enabled. Otherwise they're ignored.
+ * </p>
  */
 public class RunnerContext {
+
+  /** Default test runner template. */
+  public static final String DEFAULT_TEMPLATE =
+      "classpath:/org/htmlunit/maven/DefaultTestRunner.html";
 
   /** Htmlunit browser version; it's never null. */
   private BrowserVersion browserVersion = BrowserVersion.FIREFOX_17;
@@ -29,6 +50,42 @@ public class RunnerContext {
 
   /** Indicates whether the runner must run in debug mode or not. */
   private boolean debugMode;
+
+  /** Port to start debug server. Default is 8000. */
+  private int debugPort = 8000;
+
+  /** Path to the test runner template. */
+  private URL testRunnerTemplate;
+
+  /** Script included after page load in order to run the tests; can be
+   * null. */
+  private URL testRunnerScript;
+
+  /** List of scripts loaded before test scripts; valid after initialize(). */
+  private List<URL> bootstrapScripts = new ArrayList<URL>();
+
+  /** List of scripts loaded before test scripts and after bootstrap
+   * scripts; valid after initialize(). */
+  private List<URL> sourceScripts = new ArrayList<URL>();
+
+  /** Test files. Can be any resource identified as test by the current
+   * runner. It's never null after initialize().
+   */
+  private List<URL> testFiles = new ArrayList<URL>();
+
+  /** Test runner and test cases output directory; it's never null
+   * after initialize();
+   */
+  private File outputDirectory;
+
+  /** Default constructor, it initializes default values. */
+  public RunnerContext() {
+    try {
+      testRunnerTemplate = new URL(DEFAULT_TEMPLATE);
+    } catch (MalformedURLException cause) {
+      throw new RuntimeException("Cannot initialize runner context.", cause);
+    }
+  }
 
   /** Returns the htmlunit browser version.
    * @return A valid browser version, never returns null.
@@ -80,6 +137,7 @@ public class RunnerContext {
     Validate.notNull(theRunnerConfiguration,
         "The runner configuration cannot be null.");
     runnerConfiguration = theRunnerConfiguration;
+    readRunnerConfig(runnerConfiguration);
   }
 
   /** Returns the timeout, in seconds, to wait for page load.
@@ -125,5 +183,171 @@ public class RunnerContext {
    */
   public boolean isDebugMode() {
     return debugMode;
+  }
+
+  /** Returns the debug port. Default is 8000.
+   * @return A valid number.
+   */
+  public int getDebugPort() {
+    return debugPort;
+  }
+
+  /** Determines whether JavaScript is enabled or not for this runner.
+   * @return Returns <code>true</code> if JavaScript is enabled,
+   *    <code>false</code> otherwise.
+   */
+  public boolean isJavaScriptEnabled() {
+    return webClientConfiguration.containsKey("javaScriptEnabled") &&
+        Boolean.valueOf(webClientConfiguration
+            .getProperty("javaScriptEnabled"));
+  }
+
+  /** Returns the template used to build the test runner. Defaults to
+   * {@link #DEFAULT_TEMPLATE}.
+   *
+   * @return Returns the current runner template, never returns null.
+   */
+  public URL getTestRunnerTemplate() {
+    return testRunnerTemplate;
+  }
+
+  /** Returns the script used to initialize tests. It can be referenced in
+   * the template via <code>$testRunnerScript$</code> placeholder.
+   *
+   * @return Returns the test runner script, or null if it isn't configured.
+   */
+  public URL getTestRunnerScript() {
+    return testRunnerScript;
+  }
+
+  /** Returns the scripts usually used in the bootstrap phase. It can be
+   * referenced in the template via <code>$bootstrapScripts$</code> placeholder.
+   *
+   * @return Returns the list of bootstrap scripts, or null if it isn't
+   *    configured.
+   */
+  public List<URL> getBootstrapScripts() {
+    return bootstrapScripts;
+  }
+
+  /** Returns the source scripts to test. It can be referenced in the template
+   * via <code>$sourceScripts$</code> placeholder.
+   *
+   * @return Returns the list of JavaScript source scripts, or null if it isn't
+   *    configured.
+   */
+  public List<URL> getSourceScripts() {
+    return sourceScripts;
+  }
+
+  /** Returns the list of test files. It can be referenced in the template
+   * via <code>$testFiles$</code> placeholder.
+   *
+   * @return Returns the list of test files, or null if it isn't configured.
+   */
+  public List<URL> getTestFiles() {
+    return testFiles;
+  }
+
+  /** Returns the runners files and test results output directory.
+   *
+   * @return A valid directory. Never returns null after
+   *  {@link #setRunnerConfiguration()}.
+   */
+  public File getOutputDirectory() {
+    return outputDirectory;
+  }
+
+  /** Reads common runners' configuration from the current runner config.
+   *
+   * @param config Current runner's configuration. Cannot be null.
+   */
+  private void readRunnerConfig(final Properties config) {
+    try {
+      // Reads debug information.
+      debugPort = Integer.valueOf(readProperty(config, String.class,
+          "debugPort", "8000"));
+
+      // Reads runner template.
+      String template = readProperty(config, String.class, "testRunnerTemplate",
+          null);
+      if (template == null) {
+        testRunnerTemplate = new URL(DEFAULT_TEMPLATE);
+      } else {
+        List<URL> urls = ResourceUtils.expand(template);
+
+        if (urls.size() > 0) {
+          testRunnerTemplate = urls.get(0);
+        } else {
+          testRunnerTemplate = new URL(template);
+        }
+      }
+
+      // Reads javascript resources only if javascript is enabled.
+      if (isJavaScriptEnabled()) {
+        testRunnerScript = expand(readProperty(config, String.class,
+            "testRunnerScript", "")).get(0);
+        bootstrapScripts = expand(readProperty(config, String.class,
+            "bootstrapScripts", ""));
+        sourceScripts = expand(readProperty(config, String.class,
+            "sourceScripts", ""));
+        testFiles = expand(readProperty(config, String.class, "testFiles", ""));
+      }
+
+      // Reads output directory.
+      String output = readProperty(config, String.class, "outputDirectory", "");
+      Validate.notEmpty(output,
+          "The output directory cannot be null or empty.");
+      outputDirectory = new File(output);
+    } catch (Exception cause) {
+      throw new RuntimeException("Error reading runner configuration.", cause);
+    }
+  }
+
+  /** Reads a property and converts it to the native value.
+   *
+   * @param config Configuration to read. Cannot be null.
+   * @param type Property type. Cannot be null.
+   * @param key Property key. Cannot be null or empty.
+   * @param defaultValue Default value if the property doesn't exist. Can be
+   *    null.
+   * @return Returns the required property, or the default value if it doesn't
+   *    exist.
+   */
+  @SuppressWarnings("unchecked")
+  private <T> T readProperty(final Properties config, final Class<T> type,
+      final String key, final T defaultValue) {
+    TypedPropertyEditor editor = new TypedPropertyEditor();
+
+    if (config.containsKey(key)) {
+      editor.setValue(config.getProperty(key));
+      return (T) editor.getValue();
+    }
+
+    return defaultValue;
+  }
+
+  /** Expands the specified resource matching expression into real
+   * resources, taking into account whether <code>debugMode</code> is active.
+   * @param expression Expression to expand. Cannot be null.
+   * @return A valid list of resources. Never returns null.
+   */
+  private List<URL> expand(final String expression) {
+    List<URL> resources = ResourceUtils.expand(Arrays
+        .asList(expression.split(";")));
+
+    if (debugMode) {
+      // In debug mode, all resources are served by the debug server.
+      // It transforms resource urls into debug urls.
+      List<URL> serverUrls = new ArrayList<URL>();
+
+      for (URL resource : resources) {
+        serverUrls.add(TestDebugServer.getStaticContentUrl("localhost",
+            debugPort, resource));
+      }
+      return serverUrls;
+    } else {
+      return resources;
+    }
   }
 }

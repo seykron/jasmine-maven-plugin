@@ -4,8 +4,10 @@ import static org.easymock.EasyMock.*;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
 
+import java.net.URL;
 import java.util.Properties;
 
+import org.antlr.stringtemplate.StringTemplate;
 import org.htmlunit.javascript.EventHandler;
 import org.htmlunit.maven.AbstractRunner;
 import org.htmlunit.maven.RunnerContext;
@@ -26,10 +28,11 @@ public class AbstractRunnerTest {
     final RunnerContext context = createMock(RunnerContext.class);
     AbstractRunner runner = new AbstractRunner() {
       @Override
-      protected void configure(final RunnerContext theContext) {
-        assertThat(theContext, is(context));
-      }
       public void run() {
+      }
+      @Override
+      protected void loadTest(final StringTemplate runnerTemplate,
+          final URL test) {
       }
     };
     expect(context.getBrowserVersion()).andReturn(BrowserVersion.FIREFOX_17);
@@ -61,10 +64,12 @@ public class AbstractRunnerTest {
   public void addEventListener() {
     AbstractRunner runner = new AbstractRunner() {
       @Override
-      protected void configure(final RunnerContext theContext) {
-      }
       public void run() {
         getDriver().get("classpath:org/htmlunit/maven/TestRunner.js");
+      }
+      @Override
+      protected void loadTest(final StringTemplate runnerTemplate,
+          final URL test) {
       }
     };
     runner.initialize(new RunnerContext());

@@ -132,4 +132,17 @@ public final class ResourceUtils {
 
     return (List<URL>) CollectionUtils.subtract(includes, excludes);
   }
+
+  /** Generates a list of HTML script tags for the specified list of sources.
+   * @param sources JavaScript source files. Cannot be null.
+   * @return A valid HTML, never returns null.
+   */
+  public static String generateScriptTags(final List<URL> sources) {
+    StringBuilder scripts = new StringBuilder();
+    for (URL source : sources) {
+      scripts.append("<script type=\"text/javascript\" src=\"")
+        .append(source).append("\"></script>");
+    }
+    return scripts.toString();
+  }
 }

@@ -3,15 +3,11 @@ package org.htmlunit.maven.runner;
 import static org.junit.Assert.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 
-import java.io.File;
 import java.net.URL;
-import java.util.List;
 import java.util.Properties;
 
-import org.codehaus.plexus.util.ReflectionUtils;
 import org.htmlunit.maven.RunnerContext;
 import org.htmlunit.maven.runner.JavaScriptTestRunner;
-import org.htmlunit.maven.runner.JavaScriptTestRunner.DefaultAttributes;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -26,24 +22,21 @@ public class JavaScriptTestRunnerTest {
   public void setUp() {
     context = new RunnerContext();
     Properties runnerConfig = new Properties();
-    runnerConfig.put(DefaultAttributes.OUTPUT_DIR.getKey(),
-        System.getProperty("java.io.tmpdir"));
-    runnerConfig.put(DefaultAttributes.TEST_RUNNER_SCRIPT.getKey(),
+    runnerConfig.put("outputDirectory", System.getProperty("java.io.tmpdir"));
+    runnerConfig.put("testRunnerScript",
         "classpath:org/htmlunit/maven/TestRunner.js");
-    runnerConfig.put(DefaultAttributes.BOOTSTRAP_SCRIPTS.getKey(),
+    runnerConfig.put("bootstrapScripts",
         "classpath:org/htmlunit/maven/Bootstrap.js;"
         + "http://code.jquery.com/jquery-1.9.1.js");
-    runnerConfig.put(DefaultAttributes.SOURCE_SCRIPTS.getKey(),
+    runnerConfig.put("sourceScripts",
         "classpath:org/htmlunit/maven/*.js;"
         + "~classpath:org/htmlunit/maven/*Test.js;"
         + "~classpath:org/htmlunit/maven/Bootstrap.js;"
         + "~classpath:org/htmlunit/maven/TestRunner.js");
-    runnerConfig.put(DefaultAttributes.TEST_FILES.getKey(),
+    runnerConfig.put("testFiles",
         "classpath:org/htmlunit/maven/*Test.js");
-    // Properties to test JavaScript's global scope.
     runnerConfig.put("PROP_FOO", "FOO");
     runnerConfig.put("PROP_BAR", "BAR");
-    runnerConfig.put("debugMode", false);
 
     context.setRunnerConfiguration(runnerConfig);
     context.setTimeout(10);
@@ -52,38 +45,6 @@ public class JavaScriptTestRunnerTest {
     context.getWebClientConfiguration()
       .setProperty("throwExceptionOnScriptError", String.valueOf(true));
     runner = new JavaScriptTestRunner();
-  }
-
-  @Test
-  @SuppressWarnings("rawtypes")
-  public void configure() throws Exception {
-    assertThat(getValue("testRunnerScript"), is(nullValue()));
-    assertThat(((List) getValue("bootstrapScripts")).size(), is(0));
-    assertThat(((List) getValue("sourceScripts")).size(), is(0));
-    assertThat(((List) getValue("testFiles")).size(), is(0));
-    assertThat(getValue("outputDirectory"), is(nullValue()));
-    context.getRunnerConfiguration().put(
-        DefaultAttributes.TEST_RUNNER_TEMPLATE.getKey(),
-        "classpath:org/htmlunit/maven/TestRunner.html");
-
-    runner.configure(context);
-
-    assertThat(((URL) getValue("testRunnerTemplate")).equals(
-        new URL("classpath:org/htmlunit/maven/TestRunner.html")),
-        is(true));
-    assertThat(((URL) getValue("testRunnerScript")).toString()
-        .endsWith("org/htmlunit/maven/TestRunner.js"), is(true));
-    assertThat(((List) getValue("bootstrapScripts")).size(), is(2));
-    assertThat(((URL) ((List) getValue("bootstrapScripts")).get(0))
-        .toString().endsWith("org/htmlunit/maven/Bootstrap.js"), is(true));
-    assertThat(((List) getValue("sourceScripts")).size(), is(2));
-    assertThat(((URL) ((List) getValue("sourceScripts")).get(0))
-        .toString().endsWith("Widget.js"), is(true));
-    assertThat(((List) getValue("testFiles")).size(), is(2));
-    assertThat(((URL) ((List) getValue("testFiles")).get(0))
-        .toString().endsWith("WidgetTest.js"), is(true));
-    assertThat((File) getValue("outputDirectory"),
-        is(new File(System.getProperty("java.io.tmpdir"))));
   }
 
   @Test
@@ -102,13 +63,5 @@ public class JavaScriptTestRunnerTest {
     };
     runner.initialize(context);
     runner.run();
-  }
-
-  private Object getValue(final String property) {
-    try {
-      return ReflectionUtils.getValueIncludingSuperclasses(property, runner);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

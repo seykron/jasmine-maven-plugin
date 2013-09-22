@@ -7,7 +7,6 @@ import java.net.URL;
 import java.util.Properties;
 
 import org.htmlunit.maven.RunnerContext;
-import org.htmlunit.maven.runner.JavaScriptTestRunner.DefaultAttributes;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,9 +20,9 @@ public class HtmlTestRunnerTest {
   public void setUp() {
     context = new RunnerContext();
     Properties runnerConfig = new Properties();
-    runnerConfig.put(DefaultAttributes.OUTPUT_DIR.getKey(),
+    runnerConfig.put("outputDirectory",
         System.getProperty("java.io.tmpdir"));
-    runnerConfig.put(DefaultAttributes.TEST_FILES.getKey(),
+    runnerConfig.put("testFiles",
         "classpath:org/htmlunit/maven/*Test.html");
 
     context.setRunnerConfiguration(runnerConfig);
