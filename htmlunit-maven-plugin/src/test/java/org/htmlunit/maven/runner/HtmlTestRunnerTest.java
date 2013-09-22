@@ -10,11 +10,14 @@ import org.htmlunit.maven.RunnerContext;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+
 /** Tests the {@link HtmlTestRunner} class.
  */
 public class HtmlTestRunnerTest {
   private RunnerContext context;
   private HtmlTestRunner runner;
+  private boolean verified;
 
   @Before
   public void setUp() {
@@ -25,27 +28,29 @@ public class HtmlTestRunnerTest {
     runnerConfig.put("testFiles",
         "classpath:org/htmlunit/maven/*Test.html");
 
-    context.setRunnerConfiguration(runnerConfig);
     context.setTimeout(10);
     context.getWebClientConfiguration().setProperty("javaScriptEnabled",
         String.valueOf(true));
+    context.setRunnerConfiguration(runnerConfig);
   }
 
   @Test
   public void run() {
     runner = new HtmlTestRunner() {
       @Override
-      protected void testFinished(final URL test) {
-        String result = runner.getDriver().findElementById("main").getText();
+      protected void testFinished(final URL test, final HtmlPage page) {
+        String result = page.getElementById("main").asText();
 
         if (test.getFile().endsWith("FirstTest.html")) {
           assertThat(result, is("Joe"));
         } else if (test.getFile().endsWith("SecondTest.html")) {
           assertThat(result, is("Moe"));
         }
+        verified = true;
       }
     };
     runner.initialize(context);
     runner.run();
+    assertThat(verified, is(true));
   }
 }

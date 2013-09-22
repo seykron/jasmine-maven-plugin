@@ -120,13 +120,15 @@ public final class ResourceUtils {
     List<URL> excludes = new ArrayList<URL>();
 
     for (String resourceExpression : expressions) {
-      AntExpression expression = new AntExpression(resourceExpression);
-      ResourceScanner scanner = ResourceScanner.create(expression);
+      if (!resourceExpression.isEmpty()) {
+        AntExpression expression = new AntExpression(resourceExpression);
+        ResourceScanner scanner = ResourceScanner.create(expression);
 
-      if (expression.isExclusion()) {
-        excludes.addAll(scanner.list());
-      } else {
-        includes.addAll(scanner.list());
+        if (expression.isExclusion()) {
+          excludes.addAll(scanner.list());
+        } else {
+          includes.addAll(scanner.list());
+        }
       }
     }
 

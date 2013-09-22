@@ -41,6 +41,7 @@ public class AbstractRunnerTest {
     clientProps.put("homePage", "http://foo.bar");
     expect(context.getWebClientConfiguration()).andReturn(clientProps);
     expect(context.getTimeout()).andReturn(60);
+    context.init();
     replay(context);
 
     assertThat(runner.getWebClient(), is(nullValue()));
@@ -72,7 +73,12 @@ public class AbstractRunnerTest {
           final URL test) {
       }
     };
-    runner.initialize(new RunnerContext());
+    RunnerContext context = new RunnerContext();
+    Properties runnerConfig = new Properties();
+    runnerConfig.put("outputDirectory", System.getProperty("java.io.tmpdir"));
+    context.setRunnerConfiguration(runnerConfig);
+
+    runner.initialize(context);
     runner.addEventListener(Event.TYPE_DOM_DOCUMENT_LOADED, new EventHandler() {
       @Override
       public void handleEvent(final Event event) {

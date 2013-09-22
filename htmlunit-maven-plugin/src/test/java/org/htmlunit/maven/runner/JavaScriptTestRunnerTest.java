@@ -11,12 +11,15 @@ import org.htmlunit.maven.runner.JavaScriptTestRunner;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+
 /** Tests the {@link JavaScriptTestRunner} class.
  */
 public class JavaScriptTestRunnerTest {
 
   private RunnerContext context;
   private JavaScriptTestRunner runner;
+  private boolean verified;
 
   @Before
   public void setUp() {
@@ -38,10 +41,10 @@ public class JavaScriptTestRunnerTest {
     runnerConfig.put("PROP_FOO", "FOO");
     runnerConfig.put("PROP_BAR", "BAR");
 
-    context.setRunnerConfiguration(runnerConfig);
     context.setTimeout(10);
     context.getWebClientConfiguration().setProperty("javaScriptEnabled",
         String.valueOf(true));
+    context.setRunnerConfiguration(runnerConfig);
     context.getWebClientConfiguration()
       .setProperty("throwExceptionOnScriptError", String.valueOf(true));
     runner = new JavaScriptTestRunner();
@@ -49,19 +52,22 @@ public class JavaScriptTestRunnerTest {
 
   @Test
   public void run() {
+
     runner = new JavaScriptTestRunner() {
       @Override
-      protected void testFinished(final URL test) {
-        String result = runner.getDriver().findElementById("main").getText();
+      protected void testFinished(final URL test, final HtmlPage page) {
+        String result = page.getElementById("main").asText();
 
         if (test.getFile().endsWith("FooWidgetTest.js")) {
           assertThat(result, is("FOO"));
         } else if (test.getFile().endsWith("BarWidgetTest.js")) {
           assertThat(result, is("BAR"));
         }
+        verified = true;
       }
     };
     runner.initialize(context);
     runner.run();
+    assertThat(verified, is(true));
   }
 }

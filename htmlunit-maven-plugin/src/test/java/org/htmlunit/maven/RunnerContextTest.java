@@ -28,6 +28,39 @@ public class RunnerContextTest {
   }
 
   @Test
+  public void configure_default() throws Exception {
+    RunnerContext context = new RunnerContext();
+    Properties runnerConfig = new Properties();
+    runnerConfig.put("outputDirectory", System.getProperty("java.io.tmpdir"));
+
+    context.setRunnerConfiguration(runnerConfig);
+    context.init();
+
+    assertThat(context.getBrowserVersion(),
+        is(BrowserVersion.FIREFOX_17));
+    assertThat(context.getWebClientConfiguration(), is(notNullValue()));
+    assertThat(context.getRunnerConfiguration(), is(runnerConfig));
+    assertThat(context.getTimeout(), is(-1));
+    assertThat(context.getLog(), is(nullValue()));
+    assertThat(context.isDebugMode(), is(false));
+    assertThat(context.getDebugPort(), is(8000));
+    assertThat(context.isJavaScriptEnabled(), is(false));
+    assertThat(context.getTestRunnerTemplate(),
+        is(new URL(RunnerContext.DEFAULT_TEMPLATE)));
+    assertThat(context.getBootstrapScripts().size(), is(0));
+    assertThat(context.getSourceScripts().size(), is(0));
+    assertThat(context.getTestRunnerScript(), is(nullValue()));
+    assertThat(context.getTestFiles().size(), is(0));
+    assertThat(context.getOutputDirectory(), is(notNullValue()));
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void configure_missingOutputDir() throws Exception {
+    RunnerContext context = new RunnerContext();
+    context.init();
+  }
+
+  @Test
   public void configure_javaScriptDisabled() throws Exception {
     RunnerContext context = new RunnerContext();
     Properties runnerConfig = new Properties();
@@ -44,6 +77,7 @@ public class RunnerContextTest {
         + "~classpath:org/htmlunit/maven/TestRunner.js");
     runnerConfig.put("testFiles",
         "classpath:org/htmlunit/maven/*Test.js");
+    runnerConfig.put("debugPort", "9000");
 
     Properties webClientConfig = new Properties();
     Log log = new SystemStreamLog();
@@ -54,6 +88,7 @@ public class RunnerContextTest {
     context.setTimeout(60);
     context.setLog(log);
     context.setDebugMode(true);
+    context.init();
 
     assertThat(context.getBrowserVersion(),
         is(BrowserVersion.INTERNET_EXPLORER_8));
@@ -62,12 +97,15 @@ public class RunnerContextTest {
     assertThat(context.getTimeout(), is(60));
     assertThat(context.getLog(), is(log));
     assertThat(context.isDebugMode(), is(true));
+    assertThat(context.getDebugPort(), is(9000));
     assertThat(context.isJavaScriptEnabled(), is(false));
     assertThat(context.getTestRunnerTemplate(),
         is(new URL(RunnerContext.DEFAULT_TEMPLATE)));
     assertThat(context.getBootstrapScripts().size(), is(0));
     assertThat(context.getSourceScripts().size(), is(0));
+    assertThat(context.getTestRunnerScript(), is(nullValue()));
     assertThat(context.getTestFiles().size(), is(0));
+    assertThat(context.getOutputDirectory(), is(notNullValue()));
   }
 
   @Test
@@ -100,6 +138,7 @@ public class RunnerContextTest {
     context.setTimeout(60);
     context.setLog(log);
     context.setDebugMode(true);
+    context.init();
 
     assertThat(context.getBrowserVersion(),
         is(BrowserVersion.INTERNET_EXPLORER_8));
@@ -108,6 +147,7 @@ public class RunnerContextTest {
     assertThat(context.getTimeout(), is(60));
     assertThat(context.getLog(), is(log));
     assertThat(context.isDebugMode(), is(true));
+    assertThat(context.getDebugPort(), is(8000));
     assertThat(context.isJavaScriptEnabled(), is(true));
     assertThat(context.getTestRunnerTemplate(),
         is(new URL(RunnerContext.DEFAULT_TEMPLATE + "foo")));

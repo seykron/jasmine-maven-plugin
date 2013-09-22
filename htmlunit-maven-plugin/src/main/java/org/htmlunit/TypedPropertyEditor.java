@@ -14,7 +14,7 @@ import org.apache.commons.lang.Validate;
  *
  * <p>
  * It assumes each <em>type</em> has a <code>valueOf(String)</code> method.
- * Numbers are always treated as Long. It doesn't support floating point
+ * Numbers are always treated as Integer. It doesn't support floating point
  * numbers.
  * </p>
  */
@@ -117,7 +117,7 @@ public class TypedPropertyEditor extends PropertyEditorSupport {
   private static class NumberEditor extends TypeEditor {
     /** Default constructor. */
     public NumberEditor() {
-      super(Long.class);
+      super(Integer.class);
     }
 
     /** {@inheritDoc}

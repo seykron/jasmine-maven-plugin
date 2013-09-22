@@ -17,11 +17,11 @@ public class TypedPropertyEditorTest {
 
     editor.setValue(1234L);
     assertThat(editor.isEditable(), is(true));
-    assertThat((Long) editor.getValue(), is(1234L));
+    assertThat((Integer) editor.getValue(), is(1234));
 
     editor.setValue("1337");
     assertThat(editor.isEditable(), is(true));
-    assertThat((Long) editor.getValue(), is(1337L));
+    assertThat((Integer) editor.getValue(), is(1337));
 
     editor.setValue("true");
     assertThat(editor.isEditable(), is(true));
@@ -38,6 +38,6 @@ public class TypedPropertyEditorTest {
     editor.setAsText("1234");
     assertThat(editor.isEditable(), is(true));
     assertThat(editor.getAsText(), is("1234"));
-    assertThat((Long) editor.getValue(), is(1234L));
+    assertThat((Integer) editor.getValue(), is(1234));
   }
 }

@@ -15,11 +15,10 @@ import org.htmlunit.TypedPropertyEditor;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 
 /** Contains common {@link WebDriverRunner} configuration. By default
- * target browser version is {@link BrowserVersion#FIREFOX_3_6}.
+ * target browser version is {@link BrowserVersion#FIREFOX_17}.
  *
  * <p>
- * It also reads shared runner's configuration when
- * {@link #setRunnerConfiguration} is called.
+ * It also reads shared runner's configuration when {@link #init} is called.
  * </p>
  * <p>
  * {@link #getBootstrapScripts()}, {@link #getSourceScripts()},
@@ -52,7 +51,7 @@ public class RunnerContext {
   private boolean debugMode;
 
   /** Port to start debug server. Default is 8000. */
-  private int debugPort = 8000;
+  private Integer debugPort = 8000;
 
   /** Path to the test runner template. */
   private URL testRunnerTemplate;
@@ -85,6 +84,12 @@ public class RunnerContext {
     } catch (MalformedURLException cause) {
       throw new RuntimeException("Cannot initialize runner context.", cause);
     }
+  }
+
+  /** Initializes this context.
+   */
+  public void init() {
+    readRunnerConfig(runnerConfiguration);
   }
 
   /** Returns the htmlunit browser version.
@@ -137,7 +142,6 @@ public class RunnerContext {
     Validate.notNull(theRunnerConfiguration,
         "The runner configuration cannot be null.");
     runnerConfiguration = theRunnerConfiguration;
-    readRunnerConfig(runnerConfiguration);
   }
 
   /** Returns the timeout, in seconds, to wait for page load.
@@ -265,8 +269,7 @@ public class RunnerContext {
   private void readRunnerConfig(final Properties config) {
     try {
       // Reads debug information.
-      debugPort = Integer.valueOf(readProperty(config, String.class,
-          "debugPort", "8000"));
+      debugPort = readProperty(config, Integer.class, "debugPort", 8000);
 
       // Reads runner template.
       String template = readProperty(config, String.class, "testRunnerTemplate",
@@ -285,8 +288,11 @@ public class RunnerContext {
 
       // Reads javascript resources only if javascript is enabled.
       if (isJavaScriptEnabled()) {
-        testRunnerScript = expand(readProperty(config, String.class,
-            "testRunnerScript", "")).get(0);
+        List<URL> runnerScriptFiles = expand(readProperty(config, String.class,
+            "testRunnerScript", ""));
+        if (runnerScriptFiles.size() > 0) {
+          testRunnerScript = runnerScriptFiles.get(0);
+        }
         bootstrapScripts = expand(readProperty(config, String.class,
             "bootstrapScripts", ""));
         sourceScripts = expand(readProperty(config, String.class,

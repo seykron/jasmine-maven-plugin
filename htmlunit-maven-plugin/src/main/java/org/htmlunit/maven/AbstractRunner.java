@@ -1,5 +1,6 @@
 package org.htmlunit.maven;
 
+import java.beans.Statement;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +14,6 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.antlr.stringtemplate.StringTemplate;
@@ -21,8 +21,11 @@ import org.antlr.stringtemplate.language.DefaultTemplateLexer;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
 import org.apache.http.impl.conn.SchemeRegistryFactory;
+import org.htmlunit.TypedPropertyEditor;
+import org.htmlunit.javascript.EventHandler;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,7 @@ import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebWindowEvent;
 import com.gargoylesoftware.htmlunit.WebWindowListener;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.host.Console;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
@@ -70,7 +74,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
   private RunnerContext context;
 
   /** Web driver to load pages; it's never null after initialize(). */
-  private HtmlUnitDriver driver;
+  private RunnerDriver driver;
 
   /** Current client; it's never null after initialize(). */
   private WebClient client;
@@ -98,35 +102,8 @@ public abstract class AbstractRunner implements WebDriverRunner {
     Validate.notNull(theContext, "The context cannot be null.");
 
     context = theContext;
-    driver = new HtmlUnitDriver(getContext().getBrowserVersion()) {
-      /** {@inheritDoc}
-       */
-      @Override
-      protected WebClient newWebClient(final BrowserVersion version) {
-        client = new WebClient(version);
-        return client;
-      }
-
-      /** {@inheritDoc}
-       */
-      @Override
-      protected WebClient modifyWebClient(final WebClient theClient) {
-        client.setWebConnection(createConnectionWrapper(client));
-        configureWebClient(client);
-        return client;
-      };
-
-      /** Since version 2.32.0, selenium doesn't allow to use DOM in closed
-       * windows. We're currently assuming that closing window is the
-       * signal of test completed, so it's necessary to check the DOM after
-       * tests. We override the new selenium behaviour to make DOM work
-       * with closed windows.
-       */
-      @Override
-      protected Page lastPage() {
-        return getCurrentWindow().getEnclosedPage();
-      }
-    };
+    context.init();
+    driver = new RunnerDriver(context.getBrowserVersion());
     int timeout = getContext().getTimeout();
     boolean throwException = client.getOptions()
         .isThrowExceptionOnScriptError();
@@ -161,7 +138,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
    * @param useCapture If true, uses event capture phase.
    */
   public void addEventListener(final String eventType,
-      final Function handler, final boolean useCapture) {
+      final EventHandler handler, final boolean useCapture) {
     Validate.notNull(client, "The web client is not initialized.");
 
     if (client.getCurrentWindow() != null
@@ -218,42 +195,6 @@ public abstract class AbstractRunner implements WebDriverRunner {
    * @param client Client to modify. Cannot be null.
    */
   protected void configureWebClient(final WebClient client) {
-    WebClientConfigurer configurer = new WebClientConfigurer(client);
-    configurer.configure(getContext().getWebClientConfiguration());
-    client.setAjaxController(new NicelyResynchronizingAjaxController());
-    client.setIncorrectnessListener(new IncorrectnessListener() {
-      @Override
-      public void notify(final String message, final Object origin) {
-        LOG.trace(message, origin);
-      }
-    });
-    client.getOptions().setJavaScriptEnabled(true);
-    client.addWebWindowListener(new WebWindowListener() {
-
-      /** {@inheritDoc}
-       */
-      @Override
-      public void webWindowOpened(final WebWindowEvent event) {
-      }
-
-      /** Adds registered event listeners to the window.
-       * {@inheritDoc}
-       */
-      @Override
-      public void webWindowContentChanged(final WebWindowEvent event) {
-        Window window = (Window) event.getWebWindow().getScriptObject();
-        registerEventListeners(window);
-        publishConfiguration(window);
-        window.setConsole(new Console());
-      }
-
-      /**
-       * {@inheritDoc}
-       */
-      @Override
-      public void webWindowClosed(final WebWindowEvent event) {
-      }
-    });
   }
 
   /** Invoked when a single test finished. Useful to validate results. It's not
@@ -261,13 +202,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
    *
    * @param test Test that finished. It's never null.
    */
-  protected void testFinished(final URL test) {
-  }
-
-  /** Waits until all windows, even those opened in JavaScript, are closed.
-   */
-  protected void waitCompletion() {
-    wait.start();
+  protected void testFinished(final URL test, final HtmlPage page) {
   }
 
   /** Can be overridden in order to prepare the runner template before writing
@@ -278,7 +213,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
    * </p>
    * @param testRunner Template already loaded. Cannot be null.
    */
-  protected void loadResources(final StringTemplate testRunner) {
+  private void loadResources(final StringTemplate testRunner) {
     URL testRunnerScript = getContext().getTestRunnerScript();
     List<URL> bootstrapScripts = getContext().getBootstrapScripts();
 
@@ -303,7 +238,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
    * @param testFile Test script to create runner file for. Cannot be null.
    * @return The generated runner URL. Never returns null.
    */
-  protected URL createTestRunnerFile(final URL testFile) {
+  private URL createTestRunnerFile(final URL testFile) {
     String baseName = FilenameUtils.getBaseName(testFile.getFile());
     File runnerFile = new File(getContext().getOutputDirectory(),
         baseName + TEST_RUNNER_SUFFIX);
@@ -338,9 +273,10 @@ public abstract class AbstractRunner implements WebDriverRunner {
       // Executes the test and waits for completion.
       getDriver().get(runner.toString());
 
-      waitCompletion();
+      wait.start();
 
-      testFinished(testFile);
+      // Notifies test result.
+      testFinished(testFile, driver.getCurrentPage());
 
       // WebDriver doesn't switch automatically.
       String windowHandle = (String) CollectionUtils
@@ -396,6 +332,63 @@ public abstract class AbstractRunner implements WebDriverRunner {
     }
   }
 
+  /** Initializes default webclient configuration.
+   *
+   * @param theClient Client to initialize configuration. Cannot be null.
+   */
+  private void initializWebDriverConfiguration(final WebClient theClient) {
+    // Loads default configuration from context.
+    Properties configuration = getContext().getWebClientConfiguration();
+    for (Object property : configuration.keySet()) {
+      try {
+        String methodName = "set" + StringUtils.capitalize((String) property);
+        TypedPropertyEditor editor = new TypedPropertyEditor();
+        editor.setValue(configuration.get(property));
+        Statement stmt = new Statement(getWebClient().getOptions(), methodName,
+            new Object[] { editor.getValue() });
+        stmt.execute();
+      } catch (Exception cause) {
+        throw new IllegalArgumentException("Property " + property
+            + " cannot be set in web client.", cause);
+      }
+    }
+
+    theClient.setAjaxController(new NicelyResynchronizingAjaxController());
+    theClient.setIncorrectnessListener(new IncorrectnessListener() {
+      @Override
+      public void notify(final String message, final Object origin) {
+        LOG.trace(message, origin);
+      }
+    });
+    theClient.getOptions().setJavaScriptEnabled(true);
+    theClient.addWebWindowListener(new WebWindowListener() {
+
+      /** {@inheritDoc}
+       */
+      @Override
+      public void webWindowOpened(final WebWindowEvent event) {
+      }
+
+      /** Adds registered event listeners to the window.
+       * {@inheritDoc}
+       */
+      @Override
+      public void webWindowContentChanged(final WebWindowEvent event) {
+        Window window = (Window) event.getWebWindow().getScriptObject();
+        registerEventListeners(window);
+        publishConfiguration(window);
+        window.setConsole(new Console());
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Override
+      public void webWindowClosed(final WebWindowEvent event) {
+      }
+    });
+  }
+
   /** Creates a web connection that supports to load resources from the
    * classpath.
    *
@@ -449,6 +442,54 @@ public abstract class AbstractRunner implements WebDriverRunner {
     }
   }
 
+  /** Modified WebDriver with several workarounds and custom configuration.
+   */
+  private class RunnerDriver extends HtmlUnitDriver {
+
+    /** Creates a driver and sets the browser version.
+     * @param version Driver's browser version. Cannot be null.
+     */
+    public RunnerDriver(final BrowserVersion version) {
+      super(version);
+    }
+
+    /** Returns the {@link HtmlPage} for the current window.
+     * @return When loaded, it returns a valid page.
+     */
+    public HtmlPage getCurrentPage() {
+      return (HtmlPage) lastPage();
+    }
+
+    /** {@inheritDoc}
+     */
+    @Override
+    protected WebClient newWebClient(final BrowserVersion version) {
+      client = new WebClient(version);
+      return client;
+    }
+
+    /** {@inheritDoc}
+     */
+    @Override
+    protected WebClient modifyWebClient(final WebClient theClient) {
+      client.setWebConnection(createConnectionWrapper(client));
+      initializWebDriverConfiguration(client);
+      configureWebClient(client);
+      return client;
+    };
+
+    /** Since version 2.32.0, selenium doesn't allow to use DOM in closed
+     * windows. We're currently assuming that closing window is the
+     * signal of test completed, so it's necessary to check the DOM after
+     * tests. We override the new selenium behaviour to make DOM work
+     * with closed windows.
+     */
+    @Override
+    protected Page lastPage() {
+      return getCurrentWindow().getEnclosedPage();
+    }
+  }
+
   /** Event definition to allow event enqueue.
    */
   private static class EventDefinition {
@@ -456,7 +497,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
     private final String eventType;
 
     /** Event listener; it's never null. */
-    private final Function handler;
+    private final EventHandler handler;
 
     /** True to use capture event phase. */
     private final boolean useCapture;
@@ -467,8 +508,8 @@ public abstract class AbstractRunner implements WebDriverRunner {
      * @param handler Event listener. Cannot be null.
      * @param useCapture If true, uses event capture phase.
      */
-    public EventDefinition(final String theEventType, final Function theHandler,
-        final boolean isUseCapture) {
+    public EventDefinition(final String theEventType,
+        final EventHandler theHandler, final boolean isUseCapture) {
       eventType = theEventType;
       handler = theHandler;
       useCapture = isUseCapture;
@@ -484,7 +525,7 @@ public abstract class AbstractRunner implements WebDriverRunner {
     /** Returns the event listener.
      * @return A valid JavaScript function. Never returns null.
      */
-    public Function getHandler() {
+    public EventHandler getHandler() {
       return handler;
     }
 
